@@ -113,24 +113,13 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
     {
         /** @var RequestConfig $object */
         $object = $this->extractObjectToPopulate($class, $context) ?: new $class();
-        $serializer = $this->getSerializer();
 
-//        /** @var RequestConfig|null $requestConfig */
-//        $requestConfig = isset($data['config']) ?
-//            $serializer->denormalize($data, RequestConfig::class, $format) :
-//            null;
-//
-//        $object->setConfig($requestConfig);
-
-        $cfgContext = $context;
-        $cfgContext['ignored_attributes'] = ['headers'];
-        $cfgContext['object_to_populate'] = $object;
-        $cfgContext[self::CONTEXT_IGNORE] = true;
-
-        $serializer->denormalize($data, $class, $format, $cfgContext);
-
-        var_export($object);
-        die("\n" . __METHOD__ . ":" . __FILE__ . ":" . __LINE__ . "\n");
+        $object->setConfigMerge($data['configMerge'] ?? null);
+        $object->setOnFail($data['onFail'] ?? null);
+        $object->setExpectedStatusCodes(isset($data['expectedStatusCodes']) ?
+            (array)$data['expectedStatusCodes'] : null
+        );
+        $object->setSilent($data['silent'] ?? null);
 
         if (!empty($data['headers'])) {
             $object->setHeaders($this->denoramlizeHeaders($data['queues'], $format, $context));
@@ -154,7 +143,7 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
 
         /** @var RequestConfig|null $requestConfig */
         $requestConfig = isset($data['config']) ?
-            $serializer->denormalize($data, RequestConfig::class, $format) :
+            $serializer->denormalize($data['config'], RequestConfig::class, $format) :
             null;
 
         $object->setConfig($requestConfig);

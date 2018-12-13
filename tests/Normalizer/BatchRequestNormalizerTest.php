@@ -47,9 +47,15 @@ class BatchRequestNormalizerTest extends TestCase
 
         $this->assertTrue($serializer->supportsDenormalization($data['input'], BatchRequest::class));
 
-        $actual = $serializer->denormalize($data['input'], BatchRequest::class);
+        $object = $serializer->denormalize($data['input'], BatchRequest::class);
 
-        print_r($actual);
+        $this->assertEquals(BatchRequest::class, get_class($object), 'Return object class name must match expected one');
+
+//        $actual = $serializer->normalize($object, null, ['skip_null_values' => true]);
+        $actual = $serializer->normalize($object);
+
+//        xdebug_var_dump($actual);
+//        xdebug_var_dump($data);
 
         $this->assertEquals($data['expected'], $actual, 'Data denormalization differs from expected');
     }
@@ -68,7 +74,14 @@ class BatchRequestNormalizerTest extends TestCase
                         ]
                     ],
                     'expected' => [
-
+                        'config' => [
+                            'silent' => true,
+                            'headers' => null,
+                            'configMerge' => null,
+                            'onFail' => null,
+                            'expectedStatusCodes' => null,
+                        ],
+                        'queues' => null,
                     ],
                 ],
             ],

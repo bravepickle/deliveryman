@@ -125,7 +125,7 @@ class RequestConfig implements NormalizableInterface
      */
     public function setSilent(?bool $silent): RequestConfig
     {
-        $this->silent = $silent;
+        $this->silent = $silent === null ? $silent : (bool)$silent;
 
         return $this;
     }
