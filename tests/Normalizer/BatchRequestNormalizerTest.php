@@ -85,6 +85,28 @@ class BatchRequestNormalizerTest extends TestCase
                     ],
                 ],
             ],
+            [
+                [
+                    'input' => [
+                        'config' => [
+                            'silent' => false,
+                            'configMerge' => 'first',
+                            'onFail' => 'proceed',
+                            'expectedStatusCodes' => 200,
+                        ]
+                    ],
+                    'expected' => [
+                        'config' => [
+                            'silent' => false,
+                            'headers' => null,
+                            'configMerge' => 'first',
+                            'onFail' => 'proceed',
+                            'expectedStatusCodes' => [200],
+                        ],
+                        'queues' => null,
+                    ],
+                ],
+            ],
         ];
     }
 }
