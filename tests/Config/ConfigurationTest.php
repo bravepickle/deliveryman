@@ -47,6 +47,7 @@ class ConfigurationTest extends TestCase
             'expectedStatusCodes' => [200, 201, 202, 204],
             'methods' => ['GET', 'POST'],
             'silent' => false,
+            'forwardMasterHeaders' => true,
         ]);
     }
 
@@ -81,6 +82,7 @@ class ConfigurationTest extends TestCase
             'expectedStatusCodes' => [200, 201, 202, 204],
             'methods' => ['GET', 'POST'],
             'silent' => false,
+            'forwardMasterHeaders' => true,
         ]);
     }
 

@@ -118,6 +118,11 @@ components:
                     type: string
                 config:
                     $ref: '#/components/schemas/RequestConfig'
+                headers:
+                    type: array
+                    description: List of requests to send together with request with disregard to config merging strategy
+                    items:
+                        $ref: '#/components/schemas/RequestHeader'
                 query:
                     type: array
                     items:
@@ -127,8 +132,10 @@ components:
         RequestQuery:
             type: object
             description: Query key-value pairs for request
-            additionalProperties:
-                type: string
+            additionalProperties: true
+            example:
+                query: Search word
+                ids: [1, 2]
         RequestData:
             type: object
             description: Data specified in body of request

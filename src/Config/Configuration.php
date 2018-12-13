@@ -108,6 +108,12 @@ class Configuration implements ConfigurationInterface
                 ->defaultValue(false)
             ->end()
 
+            ->booleanNode('forwardMasterHeaders')
+                ->info('Pass all initial headers sent from client to batched requests. Headers are merged with ' .
+                    'the rest specified bin batch request body.')
+                ->defaultValue(true)
+            ->end()
+
         ->end();
 
         return $treeBuilder;
