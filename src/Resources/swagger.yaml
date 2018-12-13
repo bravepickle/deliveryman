@@ -11,13 +11,12 @@ info:
     license:
         name: Apache 2.0
         url: http://www.apache.org/licenses/LICENSE-2.0.html
+# host: petstore.swagger.io
+# basePath: /v2
 
-# host: deliveryman.swagger.io
-# basePath: /v1
-
-schemes:
-  - http
-  - https
+#schemes:
+#  - http
+#  - https
 
 paths:
     /batch:
@@ -36,68 +35,36 @@ paths:
                   description: List of request queues and their configurations to execute
                   required: true
                   schema:
-                      $ref: '#/definitions/Batch'
+                      $ref: '#/definitions/BatchRequest'
 
             responses:
                 200:
                     description: Successfully completed
-                    # schema:
-                    #   type: string
-                    # headers:
-                    #   X-Rate-Limit:
-                    #     type: integer
-                    #     format: int32
-                    #     description: calls per hour allowed by the user
-                    #   X-Expires-After:
-                    #     type: string
-                    #     format: date-time
-                    #     description: date in UTC when token expires
                 400:
                     description: Invalid input
                     schema:
                         type: string
+                401:
+                    description: Unauthorized
+                    schema:
+                        type: string
 
-                # 200:
-                #   description: successful operation
-                #   schema:
-                #     $ref: '#/definitions/ApiResponse'
-            #   200:
-            #     description: successful operation
-            #     schema:
-            #       type: object
-            #       additionalProperties:
-            #         type: integer
-            #         format: int32
             security:
                 - api_key: []
-                # security:
-                # - petstore_auth:
-                #   - write:pets
-                #   - read:pets
-
-
 
 securityDefinitions:
-    # petstore_auth:
-    #   type: oauth2
-    #   authorizationUrl: http://petstore.swagger.io/oauth/dialog
-    #   flow: implicit
-    #   scopes:
-    #     write:pets: modify pets in your account
-    #     read:pets: read your pets
     api_key:
         type: apiKey
         name: api_key
         in: header
 
 definitions:
-
-    Batch:
+    BatchRequest:
         type: object
         description: Batch request body
         properties:
             config:
-                $ref: '#/definitions/Config'
+                $ref: '#/definitions/RequestConfig'
             queues:
                 type: array
                 xml:
@@ -109,11 +76,10 @@ definitions:
         xml:
             name: Batch
 
-    Config:
+    RequestConfig:
         type: object
         properties:
             headers:
-                required: false
                 type: array
                 description: List of requests to send together with request
                 items:
@@ -163,7 +129,7 @@ definitions:
                 description: Identifier for given request for referencing aka alias
                 type: string
             config:
-                $ref: '#/definitions/Config'
+                $ref: '#/definitions/RequestConfig'
             query:
                 type: array
                 items:
@@ -198,7 +164,6 @@ definitions:
             value:
                 type: string
                 description: Value of the HTTP request header
-
         xml:
             name: RequestHeader
 
