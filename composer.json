@@ -1,0 +1,44 @@
+{
+    "name": "bravepickle/deliveryman",
+    "description": "Agent that processes requests to your application(s) in batches sequentially or in parallel in simplified manner",
+    "type": "library",
+    "require": {
+        "php": ">=7.0",
+        "ext-json": "*",
+        "symfony/yaml": "^4.0",
+        "symfony/serializer": "^4.0",
+        "symfony/event-dispatcher": "^4.0",
+        "symfony/http-foundation": "^4.0",
+        "symfony/config": "^4.0",
+        "guzzlehttp/guzzle": "^6.3",
+        "guzzlehttp/psr7": "^1.5"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^7.5"
+    },
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "Victor",
+            "email": "2bravepickle@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Deliveryman\\": "src/"
+        }
+    },
+    "autoload-dev":  {
+        "psr-4": {
+            "DeliverymanTest\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "suggest": {
+        "symfony/validator": "Allows to validate data before handling requests.",
+        "monolog/monolog": "Logger for events."
+    },
+    "config": {
+        "bin-dir": "bin/"
+    }
+}

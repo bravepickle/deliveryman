@@ -23,4 +23,5 @@ Attention! Configs should be properly defined! Do not forget to whitelist allowe
 ## Features
 
 ## TODO
--[ ] Swagger config documentation
+- [ ] Swagger config documentation
+- [ ] Remove symfony/http-foundation from dependencies if guzzlehttp/psr7 is feasible enough
