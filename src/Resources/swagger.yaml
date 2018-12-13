@@ -61,13 +61,8 @@ components:
                     $ref: '#/components/schemas/RequestConfig'
                 queues:
                     type: array
-                    xml:
-                        name: queue
-                        wrapped: true
                     items:
                         $ref: '#/components/schemas/Queue'
-            xml:
-                name: Batch
         RequestConfig:
             type: object
             properties:
@@ -110,14 +105,10 @@ components:
                     type: boolean
                     description: Do not return response data from batch requests back to sender
                     default: false
-            xml:
-                name: Order
         Queue:
             type: array
             items:
                 $ref: '#/components/schemas/Request'
-            xml:
-                name: Queue
         Request:
             type: object
             description: Request data to send
@@ -133,21 +124,15 @@ components:
                         $ref: '#/components/schemas/RequestQuery'
                 data:
                     $ref: '#/components/schemas/RequestData'
-            xml:
-                name: Request
         RequestQuery:
             type: object
             description: Query key-value pairs for request
             additionalProperties:
                 type: string
-            xml:
-                name: RequestQuery
         RequestData:
             type: object
             description: Data specified in body of request
             additionalProperties: true
-            xml:
-                name: RequestData
         RequestHeader:
             type: object
             description: Request HTTP headers to send to request
@@ -158,5 +143,3 @@ components:
                 value:
                     type: string
                     description: Value of the HTTP request header
-            xml:
-                name: RequestHeader
