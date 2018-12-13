@@ -1,4 +1,6 @@
 <?php
+declare(strict_types = 1);
+
 /**
  * Date: 2018-12-13
  * Time: 00:05
@@ -6,7 +8,8 @@
 
 namespace Deliveryman\Service;
 
-use GuzzleHttp\Psr7\Request;
+use Deliveryman\Config\Configuration;
+use Symfony\Component\Config\Definition\Processor;
 
 /**
  * Class ConfigBuilder
@@ -15,9 +18,9 @@ use GuzzleHttp\Psr7\Request;
  */
 class ConfigBuilder
 {
-    public function build(...$configs)
+    public function build(...$configs): array
     {
 //        \Symfony\Component\HttpFoundation\Request::createFromGlobals();
-//        $request = new Request();
+        return (new Processor())->processConfiguration(new Configuration(), $configs);
     }
 }

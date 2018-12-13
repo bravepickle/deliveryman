@@ -1,1 +1,216 @@
-# TODO: add description for API usage here
+swagger: '2.0'
+info:
+    description: |
+        Documenation for *Deliveryman* library at
+        [https://github.com/bravepickle/deliveryman](https://github.com/bravepickle/deliveryman).
+    version: 1.0.0
+    title: Deliveryman API
+    termsOfService: http://swagger.io/terms/
+    contact:
+        email: 2bravepickle@gmail.com
+    license:
+        name: Apache 2.0
+        url: http://www.apache.org/licenses/LICENSE-2.0.html
+
+# host: deliveryman.swagger.io
+# basePath: /v1
+
+schemes:
+  - http
+  - https
+
+paths:
+    /batch:
+        post:
+            # tags:
+            # - batch
+            summary: Create new batch of requests
+            operationId: createBatch
+            consumes:
+                - application/json
+            produces:
+                - application/json
+            parameters:
+                - in: body
+                  name: bulk
+                  description: List of request queues and their configurations to execute
+                  required: true
+                  schema:
+                      $ref: '#/definitions/Batch'
+
+            responses:
+                200:
+                    description: Successfully completed
+                    # schema:
+                    #   type: string
+                    # headers:
+                    #   X-Rate-Limit:
+                    #     type: integer
+                    #     format: int32
+                    #     description: calls per hour allowed by the user
+                    #   X-Expires-After:
+                    #     type: string
+                    #     format: date-time
+                    #     description: date in UTC when token expires
+                400:
+                    description: Invalid input
+                    schema:
+                        type: string
+
+                # 200:
+                #   description: successful operation
+                #   schema:
+                #     $ref: '#/definitions/ApiResponse'
+            #   200:
+            #     description: successful operation
+            #     schema:
+            #       type: object
+            #       additionalProperties:
+            #         type: integer
+            #         format: int32
+            security:
+                - api_key: []
+                # security:
+                # - petstore_auth:
+                #   - write:pets
+                #   - read:pets
+
+
+
+securityDefinitions:
+    # petstore_auth:
+    #   type: oauth2
+    #   authorizationUrl: http://petstore.swagger.io/oauth/dialog
+    #   flow: implicit
+    #   scopes:
+    #     write:pets: modify pets in your account
+    #     read:pets: read your pets
+    api_key:
+        type: apiKey
+        name: api_key
+        in: header
+
+definitions:
+
+    Batch:
+        type: object
+        description: Batch request body
+        properties:
+            config:
+                $ref: '#/definitions/Config'
+            queues:
+                type: array
+                xml:
+                    name: queue
+                    wrapped: true
+                items:
+                    $ref: '#/definitions/Queue'
+
+        xml:
+            name: Batch
+
+    Config:
+        type: object
+        properties:
+            headers:
+                required: false
+                type: array
+                description: List of requests to send together with request
+                items:
+                    $ref: '#/definitions/RequestHeader'
+                default: []
+            configMerge:
+                type: string
+                description: Configs merge strategy per request
+                default: first
+                enum:
+                    - first
+                    - unique
+                    - ignore
+            onFail:
+                type: string
+                description: Strategy on handling failed requests
+                default: abort
+                enum:
+                    - abort
+                    - proceed
+                    - abort-sequence
+            expectedStatusCodes:
+                type: array
+                description: List of all status codes that are considered OK, if returned. If any other status codes received by requests, then request is considered as failed
+                items:
+                    type: integer
+                default: [200, 201, 202, 204]
+            silent:
+                type: boolean
+                description: Do not return response data from batch requests back to sender
+                default: false
+        xml:
+            name: Order
+
+    Queue:
+        type: array
+        items:
+            $ref: '#/definitions/Request'
+        xml:
+            name: Queue
+
+    Request:
+        type: object
+        description: Request data to send
+        properties:
+            id:
+                description: Identifier for given request for referencing aka alias
+                type: string
+            config:
+                $ref: '#/definitions/Config'
+            query:
+                type: array
+                items:
+                    $ref: '#/definitions/RequestQuery'
+            data:
+                $ref: '#/definitions/RequestData'
+        xml:
+            name: Request
+
+    RequestQuery:
+        type: object
+        description: Query key-value pairs for request
+        additionalProperties:
+            type: string
+        xml:
+            name: RequestQuery
+
+    RequestData:
+        type: object
+        description: Data specified in body of request
+        additionalProperties: true
+        xml:
+            name: RequestData
+
+    RequestHeader:
+        type: object
+        description: Request HTTP headers to send to request
+        properties:
+            name:
+                type: string
+                description: Name of the HTTP request header
+            value:
+                type: string
+                description: Value of the HTTP request header
+
+        xml:
+            name: RequestHeader
+
+
+
+externalDocs:
+    description: Find out more
+    url: https://github.com/bravepickle/deliveryman
+
+## Added by API Auto Mocking Plugin
+#host: virtserver.swaggerhub.com
+#basePath: /bravepickle/deliveryman/1.0.0
+#schemes:
+#    - https
+#    - http

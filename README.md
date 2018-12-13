@@ -16,6 +16,7 @@ Especially is useful if REST-like APIs used on backend.
 * Possible performance improvements, if *Deliveryman* is positioned closely to target domains. Will save on networking communications delays.
 * Make requests in proper order to eliminate unexpected results when older requests outrun newer ones due to networking specifics.
 * Use it as middleware to log, transform or listen for all sent requests over *Deliveryman*.
+* Can be used as serverless function due to its loose coupling to applications and small library size.
 
 ## Security
 Attention! Configs should be properly defined! Do not forget to whitelist allowed domains, protocols, routing and similar that should be available for *Deliveryman* to handle. Otherwise it can be misused due to security breaches and used as proxy for shady requests. It is important to remember before going to production.
@@ -23,5 +24,6 @@ Attention! Configs should be properly defined! Do not forget to whitelist allowe
 ## Features
 
 ## TODO
-- [ ] Swagger config documentation
-- [ ] Remove symfony/http-foundation from dependencies if guzzlehttp/psr7 is feasible enough
+- [ ] Swagger config documentation.
+- [ ] Remove symfony/http-foundation from dependencies if guzzlehttp/psr7 is feasible enough.
+- [ ] Authorization: optional, configurable. Provide only with interface and some simple provider - check hardcoded API keys

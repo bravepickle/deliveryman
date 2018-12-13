@@ -2,6 +2,9 @@
     "name": "bravepickle/deliveryman",
     "description": "Agent that processes requests to your application(s) in batches sequentially or in parallel in simplified manner",
     "type": "library",
+    "keywords": [
+        "api", "api gateway", "php", "middleware", "http", "batch", "bulk", "requests", "serverless"
+    ],
     "require": {
         "php": ">=7.0",
         "ext-json": "*",

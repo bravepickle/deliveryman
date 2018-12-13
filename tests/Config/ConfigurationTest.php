@@ -46,6 +46,7 @@ class ConfigurationTest extends TestCase
             'configMerge' => 'first',
             'expectedStatusCodes' => [200, 201, 202, 204],
             'methods' => ['GET', 'POST'],
+            'silent' => false,
         ]);
     }
 
@@ -75,6 +76,11 @@ class ConfigurationTest extends TestCase
         $this->assertEquals($config, [
             'domains' => ['example.com',],
             'headers' => [],
+            'onFail' => 'abort',
+            'configMerge' => 'first',
+            'expectedStatusCodes' => [200, 201, 202, 204],
+            'methods' => ['GET', 'POST'],
+            'silent' => false,
         ]);
     }
 
