@@ -1,181 +1,162 @@
-swagger: '2.0'
+openapi: 3.0.0
 info:
-    description: |
+    description: >
         Documenation for *Deliveryman* library at
         [https://github.com/bravepickle/deliveryman](https://github.com/bravepickle/deliveryman).
-    version: 1.0.0
+    version: "1.0.0-oas3"
     title: Deliveryman API
-    termsOfService: http://swagger.io/terms/
+    termsOfService: 'http://swagger.io/terms/'
     contact:
         email: 2bravepickle@gmail.com
     license:
         name: Apache 2.0
-        url: http://www.apache.org/licenses/LICENSE-2.0.html
-# host: petstore.swagger.io
-# basePath: /v2
-
-#schemes:
-#  - http
-#  - https
-
+        url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
 paths:
     /batch:
         post:
-            # tags:
-            # - batch
             summary: Create new batch of requests
             operationId: createBatch
-            consumes:
-                - application/json
-            produces:
-                - application/json
-            parameters:
-                - in: body
-                  name: bulk
-                  description: List of request queues and their configurations to execute
-                  required: true
-                  schema:
-                      $ref: '#/definitions/BatchRequest'
-
             responses:
-                200:
+                '200':
                     description: Successfully completed
-                400:
+                '400':
                     description: Invalid input
-                    schema:
-                        type: string
-                401:
+                    content:
+                        application/json:
+                            schema:
+                                type: string
+                '401':
                     description: Unauthorized
-                    schema:
-                        type: string
-
+                    content:
+                        application/json:
+                            schema:
+                                type: string
             security:
                 - api_key: []
-
-securityDefinitions:
-    api_key:
-        type: apiKey
-        name: api_key
-        in: header
-
-definitions:
-    BatchRequest:
-        type: object
-        description: Batch request body
-        properties:
-            config:
-                $ref: '#/definitions/RequestConfig'
-            queues:
-                type: array
-                xml:
-                    name: queue
-                    wrapped: true
-                items:
-                    $ref: '#/definitions/Queue'
-
-        xml:
-            name: Batch
-
-    RequestConfig:
-        type: object
-        properties:
-            headers:
-                type: array
-                description: List of requests to send together with request
-                items:
-                    $ref: '#/definitions/RequestHeader'
-                default: []
-            configMerge:
-                type: string
-                description: Configs merge strategy per request
-                default: first
-                enum:
-                    - first
-                    - unique
-                    - ignore
-            onFail:
-                type: string
-                description: Strategy on handling failed requests
-                default: abort
-                enum:
-                    - abort
-                    - proceed
-                    - abort-sequence
-            expectedStatusCodes:
-                type: array
-                description: List of all status codes that are considered OK, if returned. If any other status codes received by requests, then request is considered as failed
-                items:
-                    type: integer
-                default: [200, 201, 202, 204]
-            silent:
-                type: boolean
-                description: Do not return response data from batch requests back to sender
-                default: false
-        xml:
-            name: Order
-
-    Queue:
-        type: array
-        items:
-            $ref: '#/definitions/Request'
-        xml:
-            name: Queue
-
-    Request:
-        type: object
-        description: Request data to send
-        properties:
-            id:
-                description: Identifier for given request for referencing aka alias
-                type: string
-            config:
-                $ref: '#/definitions/RequestConfig'
-            query:
-                type: array
-                items:
-                    $ref: '#/definitions/RequestQuery'
-            data:
-                $ref: '#/definitions/RequestData'
-        xml:
-            name: Request
-
-    RequestQuery:
-        type: object
-        description: Query key-value pairs for request
-        additionalProperties:
-            type: string
-        xml:
-            name: RequestQuery
-
-    RequestData:
-        type: object
-        description: Data specified in body of request
-        additionalProperties: true
-        xml:
-            name: RequestData
-
-    RequestHeader:
-        type: object
-        description: Request HTTP headers to send to request
-        properties:
-            name:
-                type: string
-                description: Name of the HTTP request header
-            value:
-                type: string
-                description: Value of the HTTP request header
-        xml:
-            name: RequestHeader
-
-
-
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/BatchRequest'
+                description: List of request queues and their configurations to execute
+                required: true
 externalDocs:
     description: Find out more
-    url: https://github.com/bravepickle/deliveryman
-
-## Added by API Auto Mocking Plugin
-#host: virtserver.swaggerhub.com
-#basePath: /bravepickle/deliveryman/1.0.0
-#schemes:
-#    - https
-#    - http
+    url: 'https://github.com/bravepickle/deliveryman'
+servers:
+    - url: 'https://virtserver.swaggerhub.com/bravepickle/deliveryman/1.0.0'
+    - url: 'http://virtserver.swaggerhub.com/bravepickle/deliveryman/1.0.0'
+components:
+    securitySchemes:
+        api_key:
+            type: apiKey
+            name: api_key
+            in: header
+    schemas:
+        BatchRequest:
+            type: object
+            description: Batch request body
+            properties:
+                config:
+                    $ref: '#/components/schemas/RequestConfig'
+                queues:
+                    type: array
+                    xml:
+                        name: queue
+                        wrapped: true
+                    items:
+                        $ref: '#/components/schemas/Queue'
+            xml:
+                name: Batch
+        RequestConfig:
+            type: object
+            properties:
+                headers:
+                    type: array
+                    description: List of requests to send together with request
+                    items:
+                        $ref: '#/components/schemas/RequestHeader'
+                    default: []
+                configMerge:
+                    type: string
+                    description: Configs merge strategy per request
+                    default: first
+                    enum:
+                        - first
+                        - unique
+                        - ignore
+                onFail:
+                    type: string
+                    description: Strategy on handling failed requests
+                    default: abort
+                    enum:
+                        - abort
+                        - proceed
+                        - abort-sequence
+                expectedStatusCodes:
+                    type: array
+                    description: >-
+                        List of all status codes that are considered OK, if returned. If any
+                        other status codes received by requests, then request is considered
+                        as failed
+                    items:
+                        type: integer
+                    default:
+                        - 200
+                        - 201
+                        - 202
+                        - 204
+                silent:
+                    type: boolean
+                    description: Do not return response data from batch requests back to sender
+                    default: false
+            xml:
+                name: Order
+        Queue:
+            type: array
+            items:
+                $ref: '#/components/schemas/Request'
+            xml:
+                name: Queue
+        Request:
+            type: object
+            description: Request data to send
+            properties:
+                id:
+                    description: Identifier for given request for referencing aka alias
+                    type: string
+                config:
+                    $ref: '#/components/schemas/RequestConfig'
+                query:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/RequestQuery'
+                data:
+                    $ref: '#/components/schemas/RequestData'
+            xml:
+                name: Request
+        RequestQuery:
+            type: object
+            description: Query key-value pairs for request
+            additionalProperties:
+                type: string
+            xml:
+                name: RequestQuery
+        RequestData:
+            type: object
+            description: Data specified in body of request
+            additionalProperties: true
+            xml:
+                name: RequestData
+        RequestHeader:
+            type: object
+            description: Request HTTP headers to send to request
+            properties:
+                name:
+                    type: string
+                    description: Name of the HTTP request header
+                value:
+                    type: string
+                    description: Value of the HTTP request header
+            xml:
+                name: RequestHeader
