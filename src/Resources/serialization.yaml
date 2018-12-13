@@ -2,5 +2,44 @@ Deliveryman\Entity\BatchRequest:
     attributes:
         config:
             type: array
+#            groups: c
         queues:
+            type: array
+#            groups: array
+
+Deliveryman\Entity\RequestConfig:
+    attributes:
+        headers:
+            type: array
+        configMerge:
+            type: string
+        onFail:
+            type: string
+        expectedStatusCodes:
+            type: array
+        silent:
+            type: boolean
+
+Deliveryman\Entity\RequestHeader:
+    attributes:
+        name:
+            type: string
+        value:
+            type: string
+
+Deliveryman\Entity\Request:
+    attributes:
+        id:
+            type: string
+        uri:
+            type: string
+        method:
+            type: string
+        config:
+            type: array
+        headers:
+            type: array
+        query:
+            type: array
+        data:
             type: array

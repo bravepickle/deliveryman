@@ -3,7 +3,9 @@
 namespace Deliveryman\Entity;
 
 
-class RequestConfig
+use Deliveryman\Normalizer\NormalizableInterface;
+
+class RequestConfig implements NormalizableInterface
 {
     /**
      * List of requests to send together with request

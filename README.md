@@ -17,6 +17,9 @@ Especially is useful if REST-like APIs used on backend.
 * Make requests in proper order to eliminate unexpected results when older requests outrun newer ones due to networking specifics.
 * Use it as middleware to log, transform or listen for all sent requests over *Deliveryman*.
 * Can be used as serverless function due to its loose coupling to applications and small library size.
+* Less memory consumption compared to processing multiple requests during single call, avoiding side effects
+* Easier to implement than GraphQL and similar approaches, especially in old applications
+* Almost no imprint is left after integration given approach to existing code base
 
 ## Security
 Attention! Configs should be properly defined! Do not forget to whitelist allowed domains, protocols, routing and similar that should be available for *Deliveryman* to handle. Otherwise it can be misused due to security breaches and used as proxy for shady requests. It is important to remember before going to production.

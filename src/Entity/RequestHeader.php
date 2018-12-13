@@ -2,12 +2,14 @@
 
 namespace Deliveryman\Entity;
 
+use Deliveryman\Normalizer\NormalizableInterface;
+
 /**
  * Class RequestHeader
  * Contains headers passed within batch request body
  * @package Deliveryman\Entity
  */
-class RequestHeader
+class RequestHeader implements NormalizableInterface
 {
     /**
      * Header name

@@ -2,12 +2,14 @@
 
 namespace Deliveryman\Entity;
 
+use Deliveryman\Normalizer\NormalizableInterface;
+
 /**
  * Class BatchRequest
  * This is main data object that contains all data passed in body for batch request
  * @package Deliveryman\Entity
  */
-class BatchRequest
+class BatchRequest implements NormalizableInterface
 {
     /**
      * General request config

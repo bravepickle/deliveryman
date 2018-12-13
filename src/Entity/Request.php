@@ -3,7 +3,9 @@
 namespace Deliveryman\Entity;
 
 
-class Request
+use Deliveryman\Normalizer\NormalizableInterface;
+
+class Request implements NormalizableInterface
 {
     /**
      * Identifier for given request for referencing aka alias
