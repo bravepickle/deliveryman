@@ -114,8 +114,14 @@ components:
             description: Request data to send
             properties:
                 id:
-                    description: Identifier for given request for referencing aka alias
                     type: string
+                    description: Identifier for given request for referencing aka alias
+                uri:
+                    type: string
+                    description: Target URI to send data to
+                method:
+                    type: string
+                    description: HTTP method to use for sending request
                 config:
                     $ref: '#/components/schemas/RequestConfig'
                 headers:
@@ -125,6 +131,7 @@ components:
                         $ref: '#/components/schemas/RequestHeader'
                 query:
                     type: array
+                    description: List of query params passed with request
                     items:
                         $ref: '#/components/schemas/RequestQuery'
                 data:

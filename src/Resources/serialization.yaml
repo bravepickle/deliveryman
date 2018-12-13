@@ -1,0 +1,6 @@
+Deliveryman\Entity\BatchRequest:
+    attributes:
+        config:
+            type: array
+        queues:
+            type: array
