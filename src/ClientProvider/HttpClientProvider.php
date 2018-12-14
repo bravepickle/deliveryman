@@ -77,7 +77,7 @@ class HttpClientProvider extends AbstractClientProvider
         } elseif ($this->hasSingleQueue($queues)) {
             return $this->sendQueue($this->getFirstQueue($queues));
         } else {
-            die("Run requests in parallel!\n" . __METHOD__ . ":" . __FILE__ . ":" . __LINE__ . "\n");
+            die("Run requests in parallel! Use PSR7 promises & async requests for chaining!!!\n" . __METHOD__ . ":" . __FILE__ . ":" . __LINE__ . "\n");
         }
 
         // TODO: handle errors, check expectedStatusCodes, do not throw exceptions
