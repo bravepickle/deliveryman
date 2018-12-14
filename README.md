@@ -40,6 +40,12 @@ Attention! Configs should be properly defined! Do not forget to whitelist allowe
 - [ ] Authorization: optional, configurable. Provide only with interface and some simple provider - check hardcoded API keys
 - [ ] Update usage of Exception classes within library. Must be properly defined
 - [ ] Write docs on usage examples
+- [ ] Define format for parsing response data: json, csv, csv-to-json, plain text, binary, xml etc.
+- [ ] Set default format response parsing data
+- [ ] In library config parameter mapping for mapping: Content-Type -> format
+- [ ] For binary data return links instead of body to download files by link 
+- [ ] Optionally specify to defer response for long running batch requests. Return link for polling results
+- [ ] Cleaning downloaded files and deferred responses leave for developers to write 
 - [ ] Add to library's config section *providers* with list of providers that can be used, default one and their custom settings
 - [ ] Solve problem of how to pass headers in responses back if needed to be added to batch response, e.g. cookies 
 - [ ] Optimize handling queues: single queue - run normally; multiple queues but single request per each - run in parallel;

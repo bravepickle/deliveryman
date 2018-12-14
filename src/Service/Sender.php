@@ -12,7 +12,6 @@ use Deliveryman\EventListener\EventSender;
 use Deliveryman\Exception\SendingException;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\Serializer\Encoder\JsonDecode;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 
 /**
@@ -108,20 +107,18 @@ class Sender
             $clientProvider = $event->getClientProvider();
         }
 
-        return $this->wrapResponses($clientProvider, $responses, $batchRequest);
+        return $this->wrapResponses($clientProvider, $responses);
     }
 
     /**
      * @param ClientProviderInterface $clientProvider
      * @param array|ResponseInterface[] $responses
-     * @param BatchRequest $batchRequest
      * @return BatchResponse
      * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function wrapResponses(
         ClientProviderInterface $clientProvider,
-        array $responses,
-        BatchRequest $batchRequest
+        array $responses
     ): BatchResponse {
         $config = $this->getMasterConfig();
 
@@ -167,7 +164,7 @@ class Sender
      */
     protected function buildResponses(array $responses): array
     {
-        $jsonDecoder = new JsonDecode();
+        $jsonDecoder = new JsonEncoder();
         $returnResponses = [];
 
         foreach ($responses as $id => $srcResponse) {

@@ -21,11 +21,11 @@ class SenderTest extends TestCase
      * @dataProvider sendProvider
      * @param BatchRequest $input
      * @param array $responses
-     * @param BatchResponse $expect
+     * @param BatchResponse $expected
      * @throws \Deliveryman\Exception\SendingException
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    public function testSend(BatchRequest $input, array $responses, BatchResponse $expect)
+    public function testSend(BatchRequest $input, array $responses, BatchResponse $expected)
     {
         $configManager = new ConfigManager();
         $configManager->addConfiguration(['domains' => ['example.com', 'http://foo.com']]);
@@ -41,12 +41,9 @@ class SenderTest extends TestCase
             ->will($this->returnValue($responses));
 
         $sender = new Sender($provider, $configManager, new BatchRequestValidator($configManager));
-
         $actual = $sender->send($input);
 
-        var_dump($actual);
-
-        $this->assertEquals($expect, $actual);
+        $this->assertEquals($expected, $actual);
     }
 
     /**
@@ -63,9 +60,16 @@ class SenderTest extends TestCase
             ],
         ]);
 
+        $returnedResponses[$reqId] = (new \Deliveryman\Entity\Response())
+            ->setId($reqId)
+            ->setHeaders(null)
+            ->setStatusCode(200)
+            ->setData(['server' => 'success!'])
+        ;
+
         $batchResponse = new BatchResponse();
         $batchResponse->setStatus('ok');
-        $batchResponse->setData([]);
+        $batchResponse->setData($returnedResponses);
 
         $responses = [];
         $responses[$reqId] = (new Response())
