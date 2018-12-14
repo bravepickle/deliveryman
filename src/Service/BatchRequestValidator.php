@@ -54,6 +54,10 @@ class BatchRequestValidator
         return $errors;
     }
 
+    /**
+     * @param BatchRequest $batchRequest
+     * @param array $errors
+     */
     protected function validateQueues(BatchRequest $batchRequest, array &$errors)
     {
         if (empty($batchRequest->getQueues())) {
@@ -91,7 +95,7 @@ class BatchRequestValidator
             foreach ($queue as $request) {
                 $this->validateUri($request, $allowedHostNames, $allowedBaseUris, $errors);
 
-                $alias = $request->getAlias();
+                $alias = $request->getId();
                 if ($this->validateAlias($alias, $aliases, $errors)) {
                     $aliases[] = $alias;
                 }
@@ -99,6 +103,12 @@ class BatchRequestValidator
         }
     }
 
+    /**
+     * @param $alias
+     * @param array $aliases
+     * @param array $errors
+     * @return bool
+     */
     protected function validateAlias($alias, array $aliases, array &$errors): bool
     {
         if (in_array($alias, $aliases)) {
@@ -110,9 +120,15 @@ class BatchRequestValidator
         return true;
     }
 
+    /**
+     * @param Request $request
+     * @param array $allowedHostNames
+     * @param array $allowedBaseUris
+     * @param array $errors
+     */
     protected function validateUri(Request $request, array $allowedHostNames, array $allowedBaseUris, array &$errors)
     {
-        $path = $request->getAlias() ?: self::GENERAL_ERROR_PATH;
+        $path = $request->getId() ?: self::GENERAL_ERROR_PATH;
         if (!$request->getUri()) {
             $errors[$path][] = self::MSG_EMPTY_URI;
 

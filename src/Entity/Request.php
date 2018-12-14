@@ -52,29 +52,11 @@ class Request implements NormalizableInterface
      */
     public function getId()
     {
-        return $this->id;
-    }
-
-    /**
-     * @param mixed $id
-     * @return Request
-     */
-    public function setId($id)
-    {
-        $this->id = $id;
-
-        return $this;
-    }
-
-    /**
-     * Generate alias for request to identify this request
-     */
-    public function getAlias(): ?string
-    {
-        if ($this->getId()) {
-            return $this->getId();
+        if ($this->id) {
+            return $this->id;
         }
 
+        // Generate alias for request to identify this request
         if (!$this->getMethod()) {
             // guess method
             $id = $this->getData() ? 'POST' : 'GET';
@@ -87,6 +69,17 @@ class Request implements NormalizableInterface
         }
 
         return $id;
+    }
+
+    /**
+     * @param mixed $id
+     * @return Request
+     */
+    public function setId($id)
+    {
+        $this->id = $id;
+
+        return $this;
     }
 
     /**
