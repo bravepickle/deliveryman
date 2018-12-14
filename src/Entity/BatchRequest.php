@@ -13,7 +13,7 @@ class BatchRequest implements NormalizableInterface
 {
     /**
      * General request config
-     * @var RequestConfig
+     * @var RequestConfig|null
      */
     protected $config;
 
@@ -27,16 +27,16 @@ class BatchRequest implements NormalizableInterface
     /**
      * @return RequestConfig
      */
-    public function getConfig(): RequestConfig
+    public function getConfig(): ?RequestConfig
     {
         return $this->config;
     }
 
     /**
-     * @param RequestConfig $config
+     * @param RequestConfig|null $config
      * @return BatchRequest
      */
-    public function setConfig(RequestConfig $config): BatchRequest
+    public function setConfig(?RequestConfig $config): BatchRequest
     {
         $this->config = $config;
 
