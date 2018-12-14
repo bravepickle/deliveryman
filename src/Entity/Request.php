@@ -67,6 +67,29 @@ class Request implements NormalizableInterface
     }
 
     /**
+     * Generate alias for request to identify this request
+     */
+    public function getAlias(): ?string
+    {
+        if ($this->getId()) {
+            return $this->getId();
+        }
+
+        if (!$this->getMethod()) {
+            // guess method
+            $id = $this->getData() ? 'POST' : 'GET';
+        } else {
+            $id = strtoupper($this->getMethod());
+        }
+
+        if ($this->getUri()) {
+            $id .= '_' . $this->getUri();
+        }
+
+        return $id;
+    }
+
+    /**
      * @return string|null
      */
     public function getUri(): ?string
