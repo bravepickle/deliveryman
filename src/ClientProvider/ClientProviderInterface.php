@@ -37,7 +37,7 @@ interface ClientProviderInterface
      * @param array|RequestInterface[] $queues list of requests or associated map
      * @return ResponseInterface[]|array|null list of responses with keys as they were in request
      */
-    public function sendQueues(array $queues);
+    public function send(array $queues);
 
     /**
      * Return all errors that appeared during last session of sending data

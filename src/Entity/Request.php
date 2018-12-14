@@ -48,11 +48,12 @@ class Request implements NormalizableInterface
     protected $data;
 
     /**
+     * @param bool $guess generate ID if empty
      * @return mixed
      */
-    public function getId()
+    public function getId($guess = true)
     {
-        if ($this->id) {
+        if ($this->id || !$guess) {
             return $this->id;
         }
 
@@ -102,11 +103,16 @@ class Request implements NormalizableInterface
     }
 
     /**
+     * @param bool $guess guess method if empty
      * @return string|null
      */
-    public function getMethod(): ?string
+    public function getMethod($guess = true): ?string
     {
-        return $this->method;
+        if ($this->method || !$guess) {
+            return $this->method;
+        }
+
+        return $this->getData() ? 'POST' : 'GET';
     }
 
     /**

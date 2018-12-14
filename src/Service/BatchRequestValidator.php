@@ -143,7 +143,7 @@ class BatchRequestValidator
 
         foreach ($allowedHostNames as $hostName) {
             $hostName = preg_quote($hostName, '~');
-            if (preg_match('~^https?://' . $hostName . '~i', $request->getUri())) {
+            if (preg_match('~^https?://' . $hostName . '($|/)~i', $request->getUri())) {
                 return; // found match
             }
         }

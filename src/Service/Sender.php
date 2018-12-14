@@ -90,7 +90,7 @@ class Sender
         }
 
         if (!$this->dispatcher) {
-            $responses = $clientProvider->sendQueues($batchRequest->getQueues());
+            $responses = $clientProvider->send($batchRequest->getQueues());
         } else {
             $event = (new EventSender())
                 ->setBatchRequest($batchRequest)
@@ -99,7 +99,7 @@ class Sender
             $batchRequest = $event->getBatchRequest();     // batch request can be changed
             $clientProvider = $event->getClientProvider(); // client provider may be redefined on-fly
 
-            $responses = $clientProvider->sendQueues($batchRequest->getQueues());
+            $responses = $clientProvider->send($batchRequest->getQueues());
 
             $event->setResponses($responses);
             $this->dispatcher->dispatch(EventSender::EVENT_SENDER_POST_SEND, $event);
