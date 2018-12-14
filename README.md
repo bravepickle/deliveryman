@@ -40,3 +40,7 @@ Attention! Configs should be properly defined! Do not forget to whitelist allowe
 - [ ] Authorization: optional, configurable. Provide only with interface and some simple provider - check hardcoded API keys
 - [ ] Update usage of Exception classes within library. Must be properly defined
 - [ ] Write docs on usage examples
+- [ ] Add to library's config section *providers* with list of providers that can be used, default one and their custom settings
+- [ ] Solve problem of how to pass headers in responses back if needed to be added to batch response, e.g. cookies 
+- [ ] Optimize handling queues: single queue - run normally; multiple queues but single request per each - run in parallel;
+         multiple queues with various numbers of requests - run in forked scripts or implement queues consumers-receivers, worker-jobs etc.

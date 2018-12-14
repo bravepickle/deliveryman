@@ -35,4 +35,12 @@ abstract class AbstractClientProvider implements ClientProviderInterface
     {
         $this->errors = [];
     }
+
+    /**
+     * @inheritdoc
+     */
+    public function hasErrors(): bool
+    {
+        return !empty($this->errors);
+    }
 }

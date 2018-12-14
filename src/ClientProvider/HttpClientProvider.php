@@ -2,6 +2,7 @@
 
 namespace Deliveryman\ClientProvider;
 
+use Deliveryman\Service\ConfigManager;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -12,21 +13,45 @@ use Psr\Http\Message\ResponseInterface;
  */
 class HttpClientProvider extends AbstractClientProvider
 {
+    /**
+     * @var ConfigManager
+     */
+    protected $configManager;
 
     /**
-     * @inheritdoc
+     * Sender constructor.
+     * @param ConfigManager $configManager
      */
-    public function send(RequestInterface $request, ?RequestMetaDataInterface $metaData)
+    public function __construct(ConfigManager $configManager)
     {
-        // TODO: Implement send() method.
-        die("\n" . __METHOD__ . ':' . __FILE__ . ':' . __LINE__ . "\n");
+        $this->configManager = $configManager;
     }
 
     /**
+     * @return array
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function getMasterConfig()
+    {
+        return $this->configManager->getConfiguration();
+    }
+
+//    /**
+//     * @inheritdoc
+//     */
+//    public function send(RequestInterface $request, ?RequestMetaDataInterface $metaData)
+//    {
+//        // TODO: Implement send() method.
+//        die("\n" . __METHOD__ . ':' . __FILE__ . ':' . __LINE__ . "\n");
+//    }
+
+    /**
      * @inheritdoc
      */
-    public function sendQueue(array $requests)
+    public function sendQueues(array $queues)
     {
+        $config = $this->getMasterConfig();
+
         // TODO: various behavior on when:
         // - single queue - run normally
         // - multiple queues but single request per each - run in parallel

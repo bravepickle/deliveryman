@@ -41,3 +41,23 @@ Deliveryman\Entity\Request:
             type: array
         data:
             type: array
+
+Deliveryman\Entity\BatchResponse:
+    attributes:
+        data:
+            type: array
+        errors:
+            type: array
+        status:
+            type: string
+
+Deliveryman\Entity\Response:
+    attributes:
+        id:
+            type: string
+        headers:
+            type: array
+        statusCode:
+            type: string
+        data:
+            type: array
