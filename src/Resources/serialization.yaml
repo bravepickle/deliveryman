@@ -2,10 +2,8 @@ Deliveryman\Entity\BatchRequest:
     attributes:
         config:
             type: array
-#            groups: c
         queues:
             type: array
-#            groups: array
 
 Deliveryman\Entity\RequestConfig:
     attributes:
