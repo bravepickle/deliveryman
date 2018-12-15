@@ -26,7 +26,7 @@ class Configuration implements ConfigurationInterface
         $treeBuilder = new TreeBuilder(self::CONFIG_NAME);
 
         /** @var ArrayNodeDefinition $rootNode */
-        $rootNode = $treeBuilder->getRootNode();
+        $rootNode = $treeBuilder->root(self::CONFIG_NAME);
 
         $rootNode->children()
             ->arrayNode('providers')

@@ -10,7 +10,7 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 class BatchRequestValidator
 {
     const GENERAL_ERROR_PATH = '_general';
-    const MSG_INVALID_EMPTY_QUEUES = 'Queues are not defined.';
+    const MSG_EMPTY_QUEUES = 'Queues are not defined.';
     const MSG_EMPTY_URI = 'URI must be set.';
     const MSG_URI_NOT_ALLOWED = 'Given URI is not allowed.';
     const MSG_AMBIGUOUS_REQUEST_ALIAS = 'Request alias name must be unique.';
@@ -61,7 +61,7 @@ class BatchRequestValidator
     protected function validateQueues(BatchRequest $batchRequest, array &$errors)
     {
         if (empty($batchRequest->getQueues())) {
-            $errors[self::GENERAL_ERROR_PATH][] = self::MSG_INVALID_EMPTY_QUEUES;
+            $errors[self::GENERAL_ERROR_PATH][] = self::MSG_EMPTY_QUEUES;
         }
     }
 
