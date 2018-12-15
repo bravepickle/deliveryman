@@ -9,6 +9,8 @@ Deliveryman\Entity\RequestConfig:
     attributes:
         headers:
             type: array
+        format:
+            type: string
         configMerge:
             type: string
         onFail:

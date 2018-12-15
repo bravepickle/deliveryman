@@ -6,13 +6,16 @@ namespace Deliveryman\Service;
 use Deliveryman\ClientProvider\ClientProviderInterface;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
+use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestHeader;
 use Deliveryman\Entity\Response;
 use Deliveryman\EventListener\BuildResponseEvent;
 use Deliveryman\EventListener\EventSender;
 use Deliveryman\Exception\SendingException;
+use Deliveryman\Exception\SerializationException;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Serializer\Encoder\JsonEncoder;
 
 /**
  * Class Sender
@@ -66,6 +69,7 @@ class Sender
      * @return BatchResponse
      * @throws SendingException
      * @throws \Psr\Cache\InvalidArgumentException
+     * @throws SerializationException
      */
     public function send(BatchRequest $batchRequest)
     {
@@ -107,25 +111,28 @@ class Sender
             $clientProvider = $event->getClientProvider();
         }
 
-        return $this->wrapResponses($clientProvider, $responses);
+        return $this->wrapResponses($clientProvider, $responses, $batchRequest);
     }
 
     /**
      * @param ClientProviderInterface $clientProvider
      * @param array|ResponseInterface[] $responses
+     * @param BatchRequest $batchRequest
      * @return BatchResponse
      * @throws \Psr\Cache\InvalidArgumentException
+     * @throws SerializationException
      */
     protected function wrapResponses(
         ClientProviderInterface $clientProvider,
-        array $responses
+        array $responses,
+        BatchRequest $batchRequest
     ): BatchResponse {
         $config = $this->getMasterConfig();
 
         $batchResponse = new BatchResponse();
 
         if (empty($config['silent']) && $responses) {
-            $batchResponse->setData($this->buildResponses($responses));
+            $batchResponse->setData($this->buildResponses($responses, $batchRequest));
         }
 
         if ($clientProvider->hasErrors()) {
@@ -159,21 +166,48 @@ class Sender
     }
 
     /**
-     * @param array|ResponseInterface[] $responses
+     * Return list of request IDs map with resource expected formats
+     * @param array $queues
+     * @param string $defaultFormat
      * @return array
      */
-    protected function buildResponses(array $responses): array
+    protected function mapFormatRequestIds(array $queues, string $defaultFormat): array
     {
+        $map = [];
+        foreach ($queues as $queue) {
+            /** @var Request $request */
+            foreach ($queue as $request) {
+                if ($request->getConfig() && $request->getConfig()->getFormat()) {
+                    $map[$request->getId()] = $request->getConfig()->getFormat();
+                } else {
+                    $map[$request->getId()] = $defaultFormat;
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param array|ResponseInterface[] $responses
+     * @param BatchRequest $batchRequest
+     * @return array
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws SerializationException
+     */
+    protected function buildResponses(array $responses, BatchRequest $batchRequest): array
+    {
+        $defaultFormat = $this->getMasterConfig()['resourceFormat'];
+        $formatMap = $this->mapFormatRequestIds($batchRequest->getQueues(), $defaultFormat);
         $returnResponses = [];
+
         foreach ($responses as $id => $srcResponse) {
-            // TODO: add event dispatcher with redefine data
             $targetResponse = new Response();
             $targetResponse->setId($id);
             $targetResponse->setStatusCode($srcResponse->getStatusCode());
             $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
 
-            // TODO: convert to array if response output type matches JSON (same as batch request-response format)
-            $targetResponse->setData($srcResponse->getBody()->getContents());
+            $this->genResponseBody($formatMap[$id], $srcResponse, $targetResponse);
 
             if ($this->dispatcher) {
                 $event = new BuildResponseEvent($targetResponse, $srcResponse);
@@ -201,5 +235,31 @@ class Sender
         }
 
         return $headers;
+    }
+
+    /**
+     * @param string $format
+     * @param ResponseInterface $srcResponse
+     * @param Response $targetResponse
+     * @throws SerializationException
+     */
+    protected function genResponseBody($format, ResponseInterface $srcResponse, Response $targetResponse): void
+    {
+        switch ($format) {
+            case Response::FORMAT_JSON:
+                $targetResponse->setData((new JsonEncoder())->decode(
+                    $srcResponse->getBody()->getContents(),
+                    'json'
+                ));
+                break;
+            case Response::FORMAT_TEXT:
+                $targetResponse->setData($srcResponse->getBody()->getContents());
+                break;
+            case Response::FORMAT_BINARY:
+                // TODO: implement me! Download files to tmp dir and return links to those files
+                // TODO: implement FileStorageInterface to abstract place for storing files
+            default:
+                throw new SerializationException('Not supported format: ' . $format);
+            }
     }
 }

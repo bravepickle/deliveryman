@@ -27,6 +27,7 @@ class SenderTest extends TestCase
      * @param BatchResponse $expected
      * @throws \Deliveryman\Exception\SendingException
      * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Deliveryman\Exception\SerializationException
      */
     public function testSend(BatchRequest $input, array $responses, BatchResponse $expected)
     {
@@ -67,7 +68,7 @@ class SenderTest extends TestCase
             ->setId($reqId)
             ->setHeaders([new RequestHeader('Content-Type', 'application/json')])
             ->setStatusCode(200)
-            ->setData('{"server": "success!"}')
+            ->setData(['server' => 'success!'])
         ;
 
         $batchResponse = new BatchResponse();

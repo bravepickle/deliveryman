@@ -67,6 +67,7 @@ class BatchRequestNormalizerTest extends TestCase
                             'configMerge' => null,
                             'onFail' => null,
                             'expectedStatusCodes' => null,
+                            'format' => null,
                         ],
                         'queues' => null,
                     ],
@@ -94,6 +95,7 @@ class BatchRequestNormalizerTest extends TestCase
                             'configMerge' => 'first',
                             'onFail' => 'proceed',
                             'expectedStatusCodes' => [200],
+                            'format' => null,
                         ],
                         'queues' => null,
                     ],
@@ -152,6 +154,7 @@ class BatchRequestNormalizerTest extends TestCase
                                         'configMerge' => 'unique',
                                         'expectedStatusCodes' => [200, 404],
                                         'silent' => null,
+                                        'format' => null,
                                     ],
                                     'headers' => [
                                         ['name' => 'Origin', 'value' => 'http://admin-panel.example.com'],

@@ -36,6 +36,11 @@ class RequestConfig implements NormalizableInterface
     protected $silent;
 
     /**
+     * @var string|null Expected output format for responses
+     */
+    protected $format;
+
+    /**
      * @return RequestHeader[]|null|array
      */
     public function getHeaders(): ?array
@@ -130,5 +135,23 @@ class RequestConfig implements NormalizableInterface
         return $this;
     }
 
+    /**
+     * @return string|null
+     */
+    public function getFormat(): ?string
+    {
+        return $this->format;
+    }
+
+    /**
+     * @param string|null $format
+     * @return RequestConfig
+     */
+    public function setFormat(?string $format): RequestConfig
+    {
+        $this->format = $format;
+
+        return $this;
+    }
 
 }

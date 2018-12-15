@@ -7,6 +7,10 @@ use Deliveryman\Normalizer\NormalizableInterface;
 
 class Response implements NormalizableInterface
 {
+    const FORMAT_JSON = 'json';
+    const FORMAT_TEXT = 'text';
+    const FORMAT_BINARY = 'binary';
+
     /**
      * Identifier for given request for referencing aka alias
      * @var mixed

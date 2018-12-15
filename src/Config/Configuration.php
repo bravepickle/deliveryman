@@ -82,6 +82,22 @@ class Configuration implements ConfigurationInterface
                 ->end()
             ->end()
 
+            ->enumNode('batchFormat')
+                ->values(['json', 'text', 'binary'])
+                ->info('Input and output format for batch requests processing. ' .
+                    'Options: json - will try to convert target response bodies to arrays, if formats match; ' .
+                    'text - leave as it is; ' .
+                    'binary - needs special processing for binary files.'
+                )
+                ->defaultValue('json')
+            ->end()
+
+            ->enumNode('resourceFormat')
+                ->values(['json', 'text', 'binary'])
+                ->info('The format of returned data from requested resources by default.')
+                ->defaultValue('json')
+            ->end()
+
             ->enumNode('onFail')
                 ->values(['abort', 'proceed', 'abort-sequence'])
                 ->info('Select strategy on how to treat requests batch if one of them failed. ' .

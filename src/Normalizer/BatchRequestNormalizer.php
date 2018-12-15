@@ -122,6 +122,7 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
         /** @var RequestConfig $object */
         $object = $this->extractObjectToPopulate($class, $context) ?: new $class();
 
+        $object->setFormat($data['format'] ?? null);
         $object->setConfigMerge($data['configMerge'] ?? null);
         $object->setOnFail($data['onFail'] ?? null);
         $object->setExpectedStatusCodes(isset($data['expectedStatusCodes']) ?
