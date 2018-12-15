@@ -24,6 +24,17 @@ class RequestHeader implements NormalizableInterface
     protected $value;
 
     /**
+     * RequestHeader constructor.
+     * @param string|null $name
+     * @param mixed $value
+     */
+    public function __construct($name = null, $value = null)
+    {
+        $this->name = $name;
+        $this->value = $value;
+    }
+
+    /**
      * @return string
      */
     public function getName(): ?string

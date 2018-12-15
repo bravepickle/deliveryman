@@ -8,11 +8,13 @@ use Deliveryman\ClientProvider\HttpClientProvider;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
 use Deliveryman\Entity\Request;
+use Deliveryman\Entity\RequestHeader;
 use Deliveryman\Service\BatchRequestValidator;
 use Deliveryman\Service\ConfigManager;
 use Deliveryman\Service\Sender;
 use GuzzleHttp\Psr7\Response;
 use function GuzzleHttp\Psr7\stream_for;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class SenderTest extends TestCase
@@ -31,7 +33,7 @@ class SenderTest extends TestCase
         $configManager = new ConfigManager();
         $configManager->addConfiguration(['domains' => ['example.com', 'http://foo.com']]);
 
-        /** @var ClientProviderInterface $provider */
+        /** @var ClientProviderInterface|MockObject $provider */
         $provider = $this->getMockBuilder(HttpClientProvider::class)
             ->setMethods(['send'])
             ->setConstructorArgs([$configManager])
@@ -63,7 +65,7 @@ class SenderTest extends TestCase
 
         $returnedResponses[$reqId] = (new \Deliveryman\Entity\Response())
             ->setId($reqId)
-            ->setHeaders(null)
+            ->setHeaders([new RequestHeader('Content-Type', 'application/json')])
             ->setStatusCode(200)
             ->setData('{"server": "success!"}')
         ;

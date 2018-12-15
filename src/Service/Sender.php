@@ -6,6 +6,7 @@ namespace Deliveryman\Service;
 use Deliveryman\ClientProvider\ClientProviderInterface;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
+use Deliveryman\Entity\RequestHeader;
 use Deliveryman\Entity\Response;
 use Deliveryman\EventListener\BuildResponseEvent;
 use Deliveryman\EventListener\EventSender;
@@ -158,7 +159,7 @@ class Sender
     }
 
     /**
-     * @param array $responses
+     * @param array|ResponseInterface[] $responses
      * @return array
      */
     protected function buildResponses(array $responses): array
@@ -169,6 +170,9 @@ class Sender
             $targetResponse = new Response();
             $targetResponse->setId($id);
             $targetResponse->setStatusCode($srcResponse->getStatusCode());
+            $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
+
+            // TODO: convert to array if response output type matches JSON (same as batch request-response format)
             $targetResponse->setData($srcResponse->getBody()->getContents());
 
             if ($this->dispatcher) {
@@ -181,5 +185,21 @@ class Sender
         }
 
         return $returnResponses;
+    }
+
+    /**
+     * @param ResponseInterface $srcResponse
+     * @return array
+     */
+    protected function buildResponseHeaders(ResponseInterface $srcResponse): array
+    {
+        $headers = [];
+        foreach ($srcResponse->getHeaders() as $name => $values) {
+            foreach ($values as $value) {
+                $headers[] = new RequestHeader($name, $value);
+            }
+        }
+
+        return $headers;
     }
 }
