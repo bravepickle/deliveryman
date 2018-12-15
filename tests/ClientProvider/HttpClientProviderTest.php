@@ -9,6 +9,7 @@ namespace DeliverymanTest\ClientProvider;
 
 use Deliveryman\ClientProvider\HttpClientProvider;
 use Deliveryman\Entity\Request;
+use Deliveryman\Entity\RequestHeader;
 use Deliveryman\Service\ConfigManager;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -70,6 +71,9 @@ class HttpClientProviderTest extends TestCase
             [(new Request())
                 ->setMethod('GET')
                 ->setUri('http://example.com/comments')
+                ->setHeaders([
+                    (new RequestHeader())->setName('X-API')->setValue('test-server')
+                ])
             ]
         ];
 

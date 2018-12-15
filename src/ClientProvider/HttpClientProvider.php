@@ -114,7 +114,10 @@ class HttpClientProvider extends AbstractClientProvider
         //      request headers (always add if app config allows them) ->
         //      library config (most priority)
         if ($request->getHeaders()) {
-            $options['headers'] = $request->getHeaders();
+            $options['headers'] = [];
+            foreach ($request->getHeaders() as $header) {
+                $options['headers'][$header->getName()][] = $header->getValue();
+            }
         }
 
         $psrResponse = $this->createClient()->request($request->getMethod(), $request->getUri(), $options);
