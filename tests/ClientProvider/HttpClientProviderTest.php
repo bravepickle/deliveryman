@@ -10,26 +10,55 @@ namespace DeliverymanTest\ClientProvider;
 use Deliveryman\ClientProvider\HttpClientProvider;
 use Deliveryman\Entity\Request;
 use Deliveryman\Service\ConfigManager;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Response;
+use function GuzzleHttp\Psr7\stream_for;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\ResponseInterface;
 
 class HttpClientProviderTest extends TestCase
 {
     /**
      * @dataProvider basicProvider
+     * @param array $input
+     * @param $returnResponse
+     * @param array $expected
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws \Psr\Cache\InvalidArgumentException
      */
-    public function testBasic(array $input)
+    public function testBasic(array $input, $returnResponse, array $expected)
     {
-        $configManager = new ConfigManager();
-        $configManager->addConfiguration(['domains' => ['example.com', 'localhost']]);
+        $handler = HandlerStack::create(new MockHandler([
+            $returnResponse
+        ]));
 
-        // TODO: mock method sendRequest
+        $configManager = new ConfigManager();
+        $configManager->addConfiguration([
+            'domains' => ['http://example.com', ],
+            'providers' => [
+                'http' => [
+                    'request_options' => [
+                        'handler' => $handler,
+                        'http_errors' => false,
+                    ],
+                ]
+            ]
+        ]);
 
         $clientProvider = new HttpClientProvider($configManager);
+        $actualResponses = $clientProvider->send($input);
 
-        $actual = $clientProvider->send($input);
+        $this->assertArrayHasKey('GET_http://example.com/comments', $actualResponses);
 
-        print_r($actual);
-        die("\n" . __METHOD__ . ":" . __FILE__ . ":" . __LINE__ . "\n");
+        /** @var Response $actualResponse */
+        $actualResponse = $actualResponses['GET_http://example.com/comments'];
+
+        $this->assertTrue($actualResponse instanceof ResponseInterface, 'Response should be PSR-7 interface.');
+
+        $this->assertEquals($expected['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
+        $this->assertEquals($expected['headers'], $actualResponse->getHeaders(), 'Headers differ');
+        $this->assertEquals($expected['data'], $actualResponse->getBody()->getContents(), 'Body differs');
     }
 
     /**
@@ -41,12 +70,19 @@ class HttpClientProviderTest extends TestCase
             [(new Request())
                 ->setMethod('GET')
                 ->setUri('http://example.com/comments')
-//                ->setUri('http://localhost:8181/api/quizzes')
             ]
         ];
 
+        $expected = [
+            'statusCode' => 404,
+            'headers' => ['X-API' => ['test-server']],
+            'data' => '{"error": "Not Found!"}',
+        ];
+
+        $response = new Response($expected['statusCode'], ['X-API' => 'test-server'], stream_for('{"error": "Not Found!"}'));
+
         return [
-            [$queues]
+            [$queues, $response, $expected],
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace DeliverymanTest\Service;
 
 
+use Deliveryman\ClientProvider\ClientProviderInterface;
 use Deliveryman\ClientProvider\HttpClientProvider;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
@@ -30,13 +31,14 @@ class SenderTest extends TestCase
         $configManager = new ConfigManager();
         $configManager->addConfiguration(['domains' => ['example.com', 'http://foo.com']]);
 
+        /** @var ClientProviderInterface $provider */
         $provider = $this->getMockBuilder(HttpClientProvider::class)
-            ->setMethods(['sendQueues'])
+            ->setMethods(['send'])
             ->setConstructorArgs([$configManager])
             ->getMock();
 
         $provider->expects($this->once())
-            ->method('sendQueues')
+            ->method('send')
             ->with($input->getQueues())
             ->will($this->returnValue($responses));
 
@@ -52,7 +54,6 @@ class SenderTest extends TestCase
     public function sendProvider()
     {
         $reqId = 'test_get';
-
         $batchRequest = new BatchRequest();
         $batchRequest->setQueues([
             [
@@ -64,7 +65,7 @@ class SenderTest extends TestCase
             ->setId($reqId)
             ->setHeaders(null)
             ->setStatusCode(200)
-            ->setData(['server' => 'success!'])
+            ->setData('{"server": "success!"}')
         ;
 
         $batchResponse = new BatchResponse();

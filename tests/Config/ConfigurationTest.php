@@ -35,12 +35,21 @@ class ConfigurationTest extends TestCase
             ],
         ]);
 
-//        var_export($config);
-
         $this->assertEquals($config, [
             'domains' => ['example.com',],
             'headers' => [
                 ['name' => 'Accept-Language', 'value' => 'en_US'],
+            ],
+            'providers' => [
+                'http' => [
+                    'request_options' => [
+                        'allow_redirects' => false,
+                        'connect_timeout' => 10,
+                        'timeout' => 30,
+                        'debug' => false,
+                        'http_errors' => false,
+                    ],
+                ],
             ],
             'onFail' => 'abort',
             'configMerge' => 'first',
@@ -76,6 +85,17 @@ class ConfigurationTest extends TestCase
 
         $this->assertEquals($config, [
             'domains' => ['example.com',],
+            'providers' => [
+                'http' => [
+                    'request_options' => [
+                        'allow_redirects' => false,
+                        'connect_timeout' => 10,
+                        'timeout' => 30,
+                        'debug' => false,
+                        'http_errors' => false,
+                    ],
+                ],
+            ],
             'headers' => [],
             'onFail' => 'abort',
             'configMerge' => 'first',

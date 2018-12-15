@@ -6,6 +6,7 @@ use Deliveryman\Entity\Request;
 use Deliveryman\Service\ConfigManager;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Response;
+use GuzzleHttp\RequestOptions;
 
 /**
  * Class HttpClientProvider
@@ -30,19 +31,15 @@ class HttpClientProvider extends AbstractClientProvider
 
     /**
      * @return Client
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function createClient()
     {
-        return new Client([
-            'allow_redirects' => false,
-            'auth' => null,
-            'connect_timeout' => 10,
-            'timeout' => 30,
-            'debug' => false,
-            'delay' => null,
-            'http_errors' => false,
-            'synchronous' => null,
-        ]);
+        $options = $this->configManager->getConfiguration()['providers'][$this->getName()]['request_options'] ?? [];
+        // never allow throwing exceptions. Statuses should be handled elsewhere
+        $options[RequestOptions::HTTP_ERRORS] = false;
+
+        return new Client($options);
     }
 
     /**
@@ -54,22 +51,13 @@ class HttpClientProvider extends AbstractClientProvider
         return $this->configManager->getConfiguration();
     }
 
-//    /**
-//     * @inheritdoc
-//     */
-//    public function send(RequestInterface $request, ?RequestMetaDataInterface $metaData)
-//    {
-//        // TODO: Implement send() method.
-//        die("\n" . __METHOD__ . ':' . __FILE__ . ':' . __LINE__ . "\n");
-//    }
-
     /**
      * @inheritdoc
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function send(array $queues)
     {
-//        $config = $this->getMasterConfig();
-
         if ($this->hasSingleRequest($queues)) {
             $request = $this->getFirstRequest($queues);
 
@@ -85,8 +73,6 @@ class HttpClientProvider extends AbstractClientProvider
         // - single queue - run normally
         // - multiple queues but single request per each - run in parallel
         // - multiple queues with various numbers of requests - run in forked scripts or implement queues consumers-receivers etc.
-        // TODO: Implement sendQueue() method.
-        die("\n" . __METHOD__ . ':' . __FILE__ . ':' . __LINE__ . "\n");
     }
 
     /**
@@ -94,6 +80,7 @@ class HttpClientProvider extends AbstractClientProvider
      * @param array|Request[] $queue
      * @return array|Response[]
      * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function sendQueue(array $queue)
     {
@@ -110,6 +97,7 @@ class HttpClientProvider extends AbstractClientProvider
      * @param Request $request
      * @return mixed|\Psr\Http\Message\ResponseInterface
      * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function sendRequest(Request $request)
     {
@@ -119,7 +107,12 @@ class HttpClientProvider extends AbstractClientProvider
         }
 
         // TODO: add headers from library config, general config, request config, merged together according to settings
-        // TODO: if allowed, pass headers from initial client to all requests
+        // TODO: if allowed, pass headers from initial client to all requests. Proper sequence must be held.
+        // Order as follows for headers:
+        //      permissions check for allowed headers & config merge strategy ->
+        //      general batch request config merged with request config ->
+        //      request headers (always add if app config allows them) ->
+        //      library config (most priority)
         if ($request->getHeaders()) {
             $options['headers'] = $request->getHeaders();
         }
@@ -171,6 +164,14 @@ class HttpClientProvider extends AbstractClientProvider
     protected function getFirstQueue(array $queues)
     {
         return reset($queues);
+    }
+
+    /**
+     * @return string
+     */
+    public function getName(): string
+    {
+        return 'http';
     }
 
 }

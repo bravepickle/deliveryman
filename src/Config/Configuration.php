@@ -29,10 +29,28 @@ class Configuration implements ConfigurationInterface
         $rootNode = $treeBuilder->getRootNode();
 
         $rootNode->children()
+            ->arrayNode('providers')
+                ->requiresAtLeastOneElement()
+                ->info('List of client providers with their custom settings.')
+                ->example(['http' => ['debug' => true, 'timeout' => 30, 'allow_redirects' => false]])
+                ->defaultValue([
+                    'http' => [
+                        'request_options' => [
+                            'allow_redirects' => false,
+                            'connect_timeout' => 10,
+                            'timeout' => 30,
+                            'debug' => false,
+                            'http_errors' => false,
+                        ],
+                    ],
+                ])
+                ->arrayPrototype()->ignoreExtraKeys(false)->end()
+            ->end()
+
             ->arrayNode('domains')
                 ->requiresAtLeastOneElement()
                 ->isRequired()
-                ->info('Domains whitelist which are allowed for sending requests. Allowed formats: {schema}://{domain}, {domain}.')
+                ->info('Domains whitelist which are allowed for sending requests. Allowed formats: {domain}, {schema}://{domain}.')
                 ->example(['example.com', 'http://an.example.com'])
                 ->validate()
                     ->ifTrue(function($data) {

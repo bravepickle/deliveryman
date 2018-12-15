@@ -32,6 +32,12 @@ interface ClientProviderInterface
 //    public function sendQueue(array $requests);
 
     /**
+     * Get client provider's name that is used within configuration. Must be unique
+     * @return mixed
+     */
+    public function getName(): string;
+
+    /**
      * Send all queues.
      * Should be optimized for the best performance gains
      * @param array|RequestInterface[] $queues list of requests or associated map

@@ -12,7 +12,6 @@ use Deliveryman\EventListener\EventSender;
 use Deliveryman\Exception\SendingException;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\Serializer\Encoder\JsonEncoder;
 
 /**
  * Class Sender
@@ -164,25 +163,13 @@ class Sender
      */
     protected function buildResponses(array $responses): array
     {
-        $jsonDecoder = new JsonEncoder();
         $returnResponses = [];
-
         foreach ($responses as $id => $srcResponse) {
             // TODO: add event dispatcher with redefine data
             $targetResponse = new Response();
             $targetResponse->setId($id);
             $targetResponse->setStatusCode($srcResponse->getStatusCode());
-
-            if ($srcResponse->hasHeader('Content-Type')) {
-                $mime = strtolower($srcResponse->getHeader('Content-Type')[0]);
-
-                if ($mime === 'application/json') {
-                    $data = $jsonDecoder->decode($srcResponse->getBody()->getContents(), JsonEncoder::FORMAT);
-                    $targetResponse->setData($data);
-                }
-            } else {
-                $targetResponse->setData($srcResponse->getBody()->getContents());
-            }
+            $targetResponse->setData($srcResponse->getBody()->getContents());
 
             if ($this->dispatcher) {
                 $event = new BuildResponseEvent($targetResponse, $srcResponse);
