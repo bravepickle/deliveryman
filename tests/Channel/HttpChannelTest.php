@@ -240,7 +240,7 @@ class HttpChannelTest extends TestCase
                 'http' => [
                     'request_options' => [
                         'handler' => $handler,
-                        'debug' => true,
+                        'debug' => false,
                         'allow_redirects' => false,
                     ],
                 ]

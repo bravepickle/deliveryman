@@ -138,7 +138,7 @@ class Configuration implements ConfigurationInterface
 
             ->booleanNode('silent')
                 ->info('If set to TRUE, then no batch responses content will be sent back to client. ' .
-                    'Only status of batch execution')
+                    'Only status of batch request and errors will be shown.')
                 ->defaultValue(false)
             ->end()
 
