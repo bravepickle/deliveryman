@@ -31,7 +31,7 @@ class EventSender extends BasicEvent
     /**
      * @var ChannelInterface|null
      */
-    protected $clientProvider;
+    protected $channel;
 
     /**
      * @return BatchRequest|null
@@ -74,18 +74,18 @@ class EventSender extends BasicEvent
     /**
      * @return ChannelInterface|null
      */
-    public function getClientProvider(): ?ChannelInterface
+    public function getChannel(): ?ChannelInterface
     {
-        return $this->clientProvider;
+        return $this->channel;
     }
 
     /**
-     * @param ChannelInterface|null $clientProvider
+     * @param ChannelInterface|null $channel
      * @return EventSender
      */
-    public function setClientProvider(?ChannelInterface $clientProvider): EventSender
+    public function setChannel(?ChannelInterface $channel): EventSender
     {
-        $this->clientProvider = $clientProvider;
+        $this->channel = $channel;
 
         return $this;
     }

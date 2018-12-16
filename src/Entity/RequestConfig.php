@@ -11,6 +11,10 @@ class RequestConfig implements NormalizableInterface
     const CONFIG_MERGE_UNIQUE = 'unique';
     const CONFIG_MERGE_IGNORE = 'ignore';
 
+    const CONFIG_ON_FAIL_ABORT = 'abort';
+    const CONFIG_ON_FAIL_PROCEED = 'proceed';
+    const CONFIG_ON_FAIL_ABORT_QUEUE = 'abort-queue';
+
     /**
      * List of requests to send together with request
      * @var RequestHeader[]|null|array

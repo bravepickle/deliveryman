@@ -47,7 +47,6 @@ class ConfigurationTest extends TestCase
                         'connect_timeout' => 10,
                         'timeout' => 30,
                         'debug' => false,
-                        'http_errors' => false,
                     ],
                 ],
             ],
@@ -94,7 +93,6 @@ class ConfigurationTest extends TestCase
                         'connect_timeout' => 10,
                         'timeout' => 30,
                         'debug' => false,
-                        'http_errors' => false,
                     ],
                 ],
             ],
@@ -123,6 +121,5 @@ class ConfigurationTest extends TestCase
             'deliveryman' => ['domains' => ['i n v a l i d example.com']],
         ]);
     }
-
 
 }

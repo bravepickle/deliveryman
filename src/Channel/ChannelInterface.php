@@ -6,6 +6,7 @@
 
 namespace Deliveryman\Channel;
 
+use Deliveryman\Exception\ChannelException;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -42,6 +43,7 @@ interface ChannelInterface
      * Should be optimized for the best performance gains
      * @param array|RequestInterface[] $queues list of requests or associated map
      * @return ResponseInterface[]|array|null list of responses with keys as they were in request
+     * @throws ChannelException thrown when request send failed unexpectedly and queues must be terminated
      */
     public function send(array $queues);
 

@@ -3,10 +3,16 @@
 namespace Deliveryman\Channel;
 
 use Deliveryman\Entity\Request;
+use Deliveryman\Entity\RequestConfig;
+use Deliveryman\Exception\ChannelException;
+use Deliveryman\Exception\SendingException;
 use Deliveryman\Service\ConfigManager;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\RequestOptions;
+use GuzzleHttp\Promise;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * Class HttpChannel
@@ -15,6 +21,8 @@ use GuzzleHttp\RequestOptions;
  */
 class HttpChannel extends AbstractChannel
 {
+    const MSG_REQUEST_FAILED = 'Request failed to complete.';
+
     /**
      * @var ConfigManager
      */
@@ -65,14 +73,86 @@ class HttpChannel extends AbstractChannel
         } elseif ($this->hasSingleQueue($queues)) {
             return $this->sendQueue($this->getFirstQueue($queues));
         } else {
-            die("Run requests in parallel! Use PSR7 promises & async requests for chaining!!!\n" . __METHOD__ . ":" . __FILE__ . ":" . __LINE__ . "\n");
+            return $this->sendMultiQueues($queues);
+        }
+    }
+
+    /**
+     * Send multiple queues concurrently
+     * @param array $queues
+     * @return array
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function sendMultiQueues(array $queues)
+    {
+        $client = $this->createClient();
+        $responses = [];
+        $promises = [];
+
+        foreach ($queues as $key => $queue) {
+            $promises[$key] = $this->chainSendRequest($queue, $client, $responses);
         }
 
-        // TODO: handle errors, check expectedStatusCodes, do not throw exceptions
-        // TODO: various behavior on when:
-        // - single queue - run normally
-        // - multiple queues but single request per each - run in parallel
-        // - multiple queues with various numbers of requests - run in forked scripts or implement queues consumers-receivers etc.
+//        // Wait on all of the requests to complete. Throws a ConnectException if any of the requests fail
+//        // TODO: catch ConnectException if can be thrown with http_errors = false
+//        $results = Promise\unwrap($promises);
+
+        // Wait for the requests to complete, even if some of them fail
+//        $results = Promise\settle($promises)->wait();
+        Promise\settle($promises)->wait();
+
+        return $responses;
+    }
+
+    /**
+     * Chain queue of requests
+     * @param array|null $queue
+     * @param Client $client
+     * @param array $responses
+     * @return Promise\PromiseInterface|null
+     */
+    protected function chainSendRequest(?array $queue, Client $client, array &$responses)
+    {
+        if (!$queue) {
+            return null;
+        }
+
+        /** @var Request $request */
+        $request = array_shift($queue);
+        if ($request) {
+            $options = $this->buildRequestOptions($request);
+            return $client->requestAsync($request->getMethod(), $request->getUri(), $options)
+                ->then(function (ResponseInterface $response) use ($responses, $client, $queue, $request) {
+                    $responses[$request->getId()] = $response;
+                    $this->chainSendRequest($queue, $client, $responses);
+                }, function (RequestException $e) use ($responses, $client, $queue, $request) {
+                    // TODO: check unexpectedStatusCodes if should be marked as error
+                    // TODO: dispatch event on fail
+                    $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
+
+                    switch ($request->getConfig()->getOnFail()) {
+                        case RequestConfig::CONFIG_ON_FAIL_PROCEED:
+                            $this->chainSendRequest($queue, $client, $responses);
+                            break;
+
+                        case RequestConfig::CONFIG_ON_FAIL_ABORT:
+                            throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
+                                ->setRequest($request)
+                                ->setResponses($responses)
+                            ;
+                            break;
+
+                        case RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE:
+                            return; // stop chaining requests from queue
+
+                        default:
+                            throw new SendingException('Unexpected fail handler type: ' .
+                                $request->getConfig()->getOnFail());
+                    }
+                });
+        }
+
+        return null;
     }
 
     /**
@@ -101,28 +181,9 @@ class HttpChannel extends AbstractChannel
      */
     protected function sendRequest(Request $request)
     {
-        $options = [];
-        if ($request->getQuery()) {
-            $options['query'] = $request->getQuery();
-        }
+        $options = $this->buildRequestOptions($request);
 
-        // TODO: add headers from library config, general config, request config, merged together according to settings
-        // TODO: if allowed, pass headers from initial client to all requests. Proper sequence must be held.
-        // Order as follows for headers:
-        //      permissions check for allowed headers & config merge strategy ->
-        //      general batch request config merged with request config ->
-        //      request headers (always add if app config allows them) ->
-        //      library config (most priority)
-        if ($request->getHeaders()) {
-            $options['headers'] = [];
-            foreach ($request->getHeaders() as $header) {
-                $options['headers'][$header->getName()][] = $header->getValue();
-            }
-        }
-
-        $psrResponse = $this->createClient()->request($request->getMethod(), $request->getUri(), $options);
-
-        return $psrResponse;
+        return $this->createClient()->request($request->getMethod(), $request->getUri(), $options);
     }
 
     /**
@@ -175,6 +236,27 @@ class HttpChannel extends AbstractChannel
     public function getName(): string
     {
         return 'http';
+    }
+
+    /**
+     * @param Request $request
+     * @return array
+     */
+    protected function buildRequestOptions(Request $request): array
+    {
+        $options = [];
+        if ($request->getQuery()) {
+            $options['query'] = $request->getQuery();
+        }
+
+        if ($request->getHeaders()) {
+            $options['headers'] = [];
+            foreach ($request->getHeaders() as $header) {
+                $options['headers'][$header->getName()][] = $header->getValue();
+            }
+        }
+
+        return $options;
     }
 
 }

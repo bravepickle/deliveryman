@@ -31,7 +31,7 @@ class Configuration implements ConfigurationInterface
         $rootNode->children()
             ->arrayNode('channels')
                 ->requiresAtLeastOneElement()
-                ->info('List of client channels with their custom settings.')
+                ->info('List of communication channels with their custom settings.')
                 ->example(['http' => ['debug' => true, 'timeout' => 30, 'allow_redirects' => false]])
                 ->defaultValue([
                     'http' => [
@@ -40,7 +40,6 @@ class Configuration implements ConfigurationInterface
                             'connect_timeout' => 10,
                             'timeout' => 30,
                             'debug' => false,
-                            'http_errors' => false,
                         ],
                     ],
                 ])
@@ -99,11 +98,11 @@ class Configuration implements ConfigurationInterface
             ->end()
 
             ->enumNode('onFail')
-                ->values(['abort', 'proceed', 'abort-sequence'])
+                ->values(['abort', 'proceed', 'abort-queue'])
                 ->info('Select strategy on how to treat requests batch if one of them failed. ' .
                     'Options: abort - terminate execution of all not finished requests and return error; ' .
                     'proceed - disregard failed status of request and proceed with execution of the batch; ' .
-                    'abort-sequence - abort all not finished request in given sequence.'
+                    'abort-queue - abort all not finished request in given queue sequence.'
                 )
                 ->defaultValue('abort')
             ->end()

@@ -12,6 +12,7 @@ use Deliveryman\Entity\RequestHeader;
 use Deliveryman\Entity\Response;
 use Deliveryman\EventListener\BuildResponseEvent;
 use Deliveryman\EventListener\EventSender;
+use Deliveryman\Exception\ChannelException;
 use Deliveryman\Exception\SendingException;
 use Deliveryman\Exception\SerializationException;
 use Psr\Http\Message\ResponseInterface;
@@ -88,7 +89,7 @@ class Sender
             throw new SendingException('No queues with requests specified to process.');
         }
 
-        $clientProvider = $this->channel;
+        $channel = $this->channel;
 
         $errors = $this->validator->validate($batchRequest);
         if (!empty($errors)) {
@@ -96,28 +97,28 @@ class Sender
         }
 
         if (!$this->dispatcher) {
-            $responses = $clientProvider->send($batchRequest->getQueues());
+            $responses = $this->dispatchSend($batchRequest, $channel);
         } else {
             $event = (new EventSender())
                 ->setBatchRequest($batchRequest)
-                ->setClientProvider($clientProvider);
+                ->setChannel($channel);
             $this->dispatcher->dispatch(EventSender::EVENT_SENDER_PRE_SEND, $event);
             $batchRequest = $event->getBatchRequest();     // batch request can be changed
-            $clientProvider = $event->getClientProvider(); // client provider may be redefined on-fly
+            $channel = $event->getChannel(); // client provider may be redefined on-fly
 
-            $responses = $clientProvider->send($batchRequest->getQueues());
+            $responses = $this->dispatchSend($batchRequest, $channel);
 
             $event->setResponses($responses);
             $this->dispatcher->dispatch(EventSender::EVENT_SENDER_POST_SEND, $event);
             $responses = $event->getResponses();           // responses switch
-            $clientProvider = $event->getClientProvider();
+            $channel = $event->getChannel();
         }
 
-        return $this->wrapResponses($clientProvider, $responses, $batchRequest);
+        return $this->wrapResponses($channel, $responses, $batchRequest);
     }
 
     /**
-     * @param ChannelInterface $clientProvider
+     * @param ChannelInterface $channel
      * @param array|ResponseInterface[] $responses
      * @param BatchRequest $batchRequest
      * @return BatchResponse
@@ -125,17 +126,17 @@ class Sender
      * @throws SerializationException
      */
     protected function wrapResponses(
-        ChannelInterface $clientProvider,
+        ChannelInterface $channel,
         array $responses,
         BatchRequest $batchRequest
     ): BatchResponse
     {
         $config = $this->getMasterConfig();
-
         $batchResponse = new BatchResponse();
 
         if (empty($config['silent']) && $responses) {
-            list($okResp, $failResp) = $this->buildResponses($responses, $batchRequest);
+            $requests = $this->mergeConfigsPerRequest($batchRequest);
+            list($okResp, $failResp) = $this->buildResponses($responses, $requests);
 
             if ($okResp) {
                 $batchResponse->setData($okResp);
@@ -146,10 +147,10 @@ class Sender
             }
         }
 
-        if ($clientProvider->hasErrors()) {
+        if ($channel->hasErrors()) {
             $batchResponse->setStatus(BatchResponse::STATUS_FAILED);
             // TODO: format before sending to client???
-            $batchResponse->setErrors($clientProvider->getErrors());
+            $batchResponse->setErrors($channel->getErrors());
         } else {
             $batchResponse->setStatus(BatchResponse::STATUS_SUCCESS);
         }
@@ -206,8 +207,9 @@ class Sender
         $requestsMap = $this->mapRequestIds($batchRequest->getQueues());
         $map = [];
         /** @var Request $request */
-        foreach ($requestsMap as $request) {
-            $map[$request->getId()] = $this->buildRequestConfig($request, $batchRequest, $appConfig);
+        foreach ($requestsMap as $id => $request) {
+            // update config with merged one
+            $map[$id] = clone $request->setConfig($this->buildRequestConfig($request, $batchRequest, $appConfig));
         }
 
         return $map;
@@ -215,14 +217,12 @@ class Sender
 
     /**
      * @param array|ResponseInterface[] $responses
-     * @param BatchRequest $batchRequest
+     * @param array|Request[] $requests mapped requests by ids
      * @return array
-     * @throws \Psr\Cache\InvalidArgumentException
      * @throws SerializationException
      */
-    protected function buildResponses(array $responses, BatchRequest $batchRequest): array
+    protected function buildResponses(array $responses, array $requests): array
     {
-        $cfgMap = $this->mergeConfigsPerRequest($batchRequest);
         $succeededResp = [];
         $failedResp = [];
 
@@ -232,19 +232,15 @@ class Sender
             // TODO: dispatcher extend with config request resulting object
             // TODO: add headers from config
 
-            $requestConfig = $cfgMap[$id];
+            $requestConfig = $requests[$id]->getConfig();
 
             $targetResponse = new Response();
             $targetResponse->setId($id);
             $targetResponse->setStatusCode($srcResponse->getStatusCode());
 
-            if ($requestConfig->getHeaders()) {
-                $targetResponse->setHeaders(array_merge(
-                    $requestConfig->getHeaders(), $this->buildResponseHeaders($srcResponse)
-                ));
-            } else {
-                $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
-            }
+            $targetResponse->setHeaders(array_merge(
+                (array)$requestConfig->getHeaders(), $this->buildResponseHeaders($srcResponse)
+            ));
 
             $this->genResponseBody($requestConfig->getFormat(), $srcResponse, $targetResponse);
 
@@ -455,5 +451,19 @@ class Sender
         $this->mergeExpectedStatusCodes($newConfig, $requestCfg, $generalCfg, $appConfig);
 
         return $newConfig;
+    }
+
+    /**
+     * @param BatchRequest $batchRequest
+     * @param ChannelInterface $channel
+     * @return array|ResponseInterface[]|null
+     */
+    protected function dispatchSend(BatchRequest $batchRequest, ChannelInterface $channel)
+    {
+        try {
+            return $channel->send($batchRequest->getQueues());
+        } catch (ChannelException $e) {
+            return $e->getResponses();
+        }
     }
 }
