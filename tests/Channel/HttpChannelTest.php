@@ -27,6 +27,7 @@ class HttpChannelTest extends TestCase
      * @param array $expected
      * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Deliveryman\Exception\ChannelException
      */
     public function testBasic(array $input, $returnResponse, array $expected)
     {
@@ -36,12 +37,11 @@ class HttpChannelTest extends TestCase
 
         $configManager = new ConfigManager();
         $configManager->addConfiguration([
-            'domains' => ['http://example.com', ],
+            'domains' => ['http://example.com',],
             'channels' => [
                 'http' => [
                     'request_options' => [
                         'handler' => $handler,
-                        'http_errors' => false,
                     ],
                 ]
             ]
@@ -87,6 +87,138 @@ class HttpChannelTest extends TestCase
 
         return [
             [$queues, $response, $expected],
+        ];
+    }
+
+    /**
+     * @dataProvider multiProvider
+     * @param array $input
+     * @param $returnResponses
+     * @param array $expected
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Deliveryman\Exception\ChannelException
+     */
+    public function testMulti(array $input, array $returnResponses, array $expected)
+    {
+        $handler = HandlerStack::create(new MockHandler($returnResponses));
+
+        $configManager = new ConfigManager();
+        $configManager->addConfiguration([
+            'domains' => ['http://example.com',],
+            'channels' => [
+                'http' => [
+                    'request_options' => [
+                        'handler' => $handler,
+                        'debug' => true,
+                    ],
+                ]
+            ]
+        ]);
+
+        $channel = new HttpChannel($configManager);
+        $actualResponses = $channel->send($input);
+
+//        print_r($expected);
+//        print_r($actualResponses);
+//        print_r(array_keys($actualResponses));
+
+        $this->assertFalse($channel->hasErrors(), 'Errors found in processes.');
+
+        $this->assertArrayHasKey($expected[0]['id'], $actualResponses);
+
+        /** @var Response $actualResponse */
+        $actualResponse = $actualResponses[$expected[0]['id']];
+
+        $this->assertTrue($actualResponse instanceof ResponseInterface, 'Response should be PSR-7 interface.');
+
+
+        $this->assertEquals($expected[0]['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
+        $this->assertEquals($expected[0]['headers'], $actualResponse->getHeaders(), 'Headers differ');
+        $this->assertEquals($expected[0]['data'], $actualResponse->getBody()->getContents(), 'Body differs');
+
+        $this->assertArrayHasKey($expected[1]['id'], $actualResponses);
+
+        /** @var Response $actualResponse */
+        $actualResponse = $actualResponses[$expected[1]['id']];
+
+        $this->assertTrue($actualResponse instanceof ResponseInterface, 'Response should be PSR-7 interface.');
+
+        $this->assertEquals($expected[1]['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
+        $this->assertEquals($expected[1]['headers'], $actualResponse->getHeaders(), 'Headers differ');
+        $this->assertEquals($expected[1]['data'], $actualResponse->getBody()->getContents(), 'Body differs');
+
+//        $this->assertArrayHasKey($expected[2]['id'], $actualResponses);
+//
+//        /** @var Response $actualResponse */
+//        $actualResponse = $actualResponses[$expected[2]['id']];
+//
+//        $this->assertTrue($actualResponse instanceof ResponseInterface, 'Response should be PSR-7 interface.');
+//
+//        $this->assertEquals($expected[2]['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
+//        $this->assertEquals($expected[2]['headers'], $actualResponse->getHeaders(), 'Headers differ');
+//        $this->assertEquals($expected[2]['data'], $actualResponse->getBody()->getContents(), 'Body differs');
+    }
+
+    /**
+     * @return array
+     */
+    public function multiProvider()
+    {
+        $queues = [
+            [
+                (new Request())
+                ->setId('post_comments')
+                ->setUri('http://example.com/comments')
+                ->setData([
+                    'text' => 'Nice job!',
+                ]),
+
+//                (new Request())
+//                    ->setId('head_comments')
+//                    ->setUri('http://example.com/comments/1')
+//                    ->setMethod('HEAD')
+            ],
+            [(new Request())
+                ->setMethod('GET')
+                ->setUri('http://example.com/users')
+                ->setQuery(['uid' => 'zest'])
+                ->setHeaders([
+                    (new RequestHeader())->setName('X-API-Key')->setValue('test1'),
+                    (new RequestHeader())->setName('X-API-Key')->setValue('test2')
+                ])
+            ],
+        ];
+
+        $expected = [
+            [
+                'id' => 'post_comments',
+                'statusCode' => 400,
+                'headers' => ['Content-Type' => ['plain/text; utf8']],
+                'data' => 'Invalid input format',
+            ],
+            [
+                'id' => 'GET_http://example.com/users',
+                'statusCode' => 200,
+                'headers' => ['Content-Type' => ['application/json']],
+                'data' => '{"success": true}',
+            ],
+//            [
+//                'id' => 'head_comments',
+//                'statusCode' => 301,
+//                'headers' => ['Location' => ['http://www.example.com/comments/1']],
+//                'data' => '',
+//            ],
+        ];
+
+        $responses = [
+            new Response($expected[0]['statusCode'], $expected[0]['headers'], stream_for($expected[0]['data'])),
+            new Response($expected[1]['statusCode'], $expected[1]['headers'], stream_for($expected[1]['data'])),
+//            new Response($expected[2]['statusCode'], $expected[2]['headers'], stream_for($expected[2]['data'])),
+        ];
+
+        return [
+            [$queues, $responses, $expected],
         ];
     }
 }

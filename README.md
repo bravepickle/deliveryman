@@ -117,6 +117,7 @@ The following steps should be taken to make agent working properly:
 - [ ] Add option to limit number of possible queues and requests in queue
 - [ ] Only defined in *requestHeadersRules*
 - [ ] Why not use JS frontend library instead? When is it better this way?
+- [ ] Support binary, form data format
 - [ ] Solve problem of how to pass headers in responses back if needed to be added to batch response, e.g. cookies 
 - [ ] Optimize handling queues: single queue - run normally; multiple queues but single request per each - run in parallel;
          multiple queues with various numbers of requests - run in forked scripts or implement queues consumers-receivers, worker-jobs etc.

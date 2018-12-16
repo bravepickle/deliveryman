@@ -91,6 +91,7 @@ class Configuration implements ConfigurationInterface
                 ->defaultValue('json')
             ->end()
 
+            // TODO: we need to specify input and output formats for third party resources. Input should support form-data
             ->enumNode('resourceFormat')
                 ->values(['json', 'text', 'binary'])
                 ->info('The format of returned data from requested resources by default.')

@@ -374,7 +374,6 @@ class Sender
                     $headers[] = clone $genHeader; // only not set headers are added
                 }
             }
-
         }
 
         $newConfig->setHeaders($headers);
@@ -408,12 +407,12 @@ class Sender
     }
 
     /**
+     * take all default values from app config
      * @param array $appConfig
      * @return RequestConfig
      */
     protected function genDefaultConfig(array $appConfig): RequestConfig
     {
-// take all default values from app config
         $newConfig = new RequestConfig();
         $newConfig->setFormat($appConfig['resourceFormat']);
         $newConfig->setSilent($appConfig['silent']);

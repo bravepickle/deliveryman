@@ -90,15 +90,12 @@ class HttpChannel extends AbstractChannel
         $promises = [];
 
         foreach ($queues as $key => $queue) {
-            $promises[$key] = $this->chainSendRequest($queue, $client, $responses);
+            $promise = $this->chainSendRequest($queue, $client, $responses);
+            if ($promise) {
+                $promises[$key] = $promise;
+            }
         }
 
-//        // Wait on all of the requests to complete. Throws a ConnectException if any of the requests fail
-//        // TODO: catch ConnectException if can be thrown with http_errors = false
-//        $results = Promise\unwrap($promises);
-
-        // Wait for the requests to complete, even if some of them fail
-//        $results = Promise\settle($promises)->wait();
         Promise\settle($promises)->wait();
 
         return $responses;
@@ -119,12 +116,21 @@ class HttpChannel extends AbstractChannel
 
         /** @var Request $request */
         $request = array_shift($queue);
+
         if ($request) {
             $options = $this->buildRequestOptions($request);
+            $options[RequestOptions::SYNCHRONOUS] = true;
+
             return $client->requestAsync($request->getMethod(), $request->getUri(), $options)
-                ->then(function (ResponseInterface $response) use ($responses, $client, $queue, $request) {
+                ->then(function (ResponseInterface $response) use (&$responses, $client, $queue, $request) {
                     $responses[$request->getId()] = $response;
-                    $this->chainSendRequest($queue, $client, $responses);
+//                    dump($request->getId());
+//                    print_r($request->getId());
+//                    die("\n" . __METHOD__ . ":" . __FILE__ . ":" . __LINE__ . "\n");
+//                    $response = $this->chainSendRequest($queue, $client, $responses)->wait();
+                    $response = $this->chainSendRequest($queue, $client, $responses)->wait();
+
+                    print_r($response);
                 }, function (RequestException $e) use ($responses, $client, $queue, $request) {
                     // TODO: check unexpectedStatusCodes if should be marked as error
                     // TODO: dispatch event on fail
@@ -132,7 +138,7 @@ class HttpChannel extends AbstractChannel
 
                     switch ($request->getConfig()->getOnFail()) {
                         case RequestConfig::CONFIG_ON_FAIL_PROCEED:
-                            $this->chainSendRequest($queue, $client, $responses);
+                            $this->chainSendRequest($queue, $client, $responses)->wait();
                             break;
 
                         case RequestConfig::CONFIG_ON_FAIL_ABORT:
@@ -165,8 +171,8 @@ class HttpChannel extends AbstractChannel
     protected function sendQueue(array $queue)
     {
         $responses = [];
-        foreach ($queue as $id => $request) {
-            $responses[$id] = $this->sendRequest($request);
+        foreach ($queue as $request) {
+            $responses[$request->getId()] = $this->sendRequest($request);
         }
 
         return $responses;
@@ -246,13 +252,22 @@ class HttpChannel extends AbstractChannel
     {
         $options = [];
         if ($request->getQuery()) {
-            $options['query'] = $request->getQuery();
+            $options[RequestOptions::QUERY] = $request->getQuery();
         }
 
         if ($request->getHeaders()) {
-            $options['headers'] = [];
+            $options[RequestOptions::HEADERS] = [];
             foreach ($request->getHeaders() as $header) {
-                $options['headers'][$header->getName()][] = $header->getValue();
+                $options[RequestOptions::HEADERS][$header->getName()][] = $header->getValue();
+            }
+        }
+
+        // TODO: check resource input format from configs
+        if ($request->getData()) {
+            if (is_array($request->getData()) || is_bool($request->getData())) {
+                $options[RequestOptions::JSON] = $request->getData(); // set JSON format
+            } else {
+                $options[RequestOptions::BODY] = $request->getData(); // set raw
             }
         }
 
