@@ -40,7 +40,7 @@ class ConfigurationTest extends TestCase
             'headers' => [
                 ['name' => 'Accept-Language', 'value' => 'en_US'],
             ],
-            'providers' => [
+            'channels' => [
                 'http' => [
                     'request_options' => [
                         'allow_redirects' => false,
@@ -87,7 +87,7 @@ class ConfigurationTest extends TestCase
 
         $this->assertEquals($config, [
             'domains' => ['example.com',],
-            'providers' => [
+            'channels' => [
                 'http' => [
                     'request_options' => [
                         'allow_redirects' => false,

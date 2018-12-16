@@ -1,9 +1,9 @@
 <?php
 
-namespace Deliveryman\ClientProvider;
+namespace Deliveryman\Channel;
 
 
-abstract class AbstractClientProvider implements ClientProviderInterface
+abstract class AbstractChannel implements ChannelInterface
 {
     /**
      * @var array

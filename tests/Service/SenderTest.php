@@ -3,8 +3,8 @@
 namespace DeliverymanTest\Service;
 
 
-use Deliveryman\ClientProvider\ClientProviderInterface;
-use Deliveryman\ClientProvider\HttpClientProvider;
+use Deliveryman\Channel\ChannelInterface;
+use Deliveryman\Channel\HttpChannel;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
 use Deliveryman\Entity\Request;
@@ -34,8 +34,8 @@ class SenderTest extends TestCase
         $configManager = new ConfigManager();
         $configManager->addConfiguration(['domains' => ['example.com', 'http://foo.com']]);
 
-        /** @var ClientProviderInterface|MockObject $provider */
-        $provider = $this->getMockBuilder(HttpClientProvider::class)
+        /** @var ChannelInterface|MockObject $provider */
+        $provider = $this->getMockBuilder(HttpChannel::class)
             ->setMethods(['send'])
             ->setConstructorArgs([$configManager])
             ->getMock();

@@ -4,10 +4,10 @@
  * Time: 22:15
  */
 
-namespace DeliverymanTest\ClientProvider;
+namespace DeliverymanTest\Channel;
 
 
-use Deliveryman\ClientProvider\HttpClientProvider;
+use Deliveryman\Channel\HttpChannel;
 use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestHeader;
 use Deliveryman\Service\ConfigManager;
@@ -18,7 +18,7 @@ use function GuzzleHttp\Psr7\stream_for;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 
-class HttpClientProviderTest extends TestCase
+class HttpChannelTest extends TestCase
 {
     /**
      * @dataProvider basicProvider
@@ -37,7 +37,7 @@ class HttpClientProviderTest extends TestCase
         $configManager = new ConfigManager();
         $configManager->addConfiguration([
             'domains' => ['http://example.com', ],
-            'providers' => [
+            'channels' => [
                 'http' => [
                     'request_options' => [
                         'handler' => $handler,
@@ -47,8 +47,8 @@ class HttpClientProviderTest extends TestCase
             ]
         ]);
 
-        $clientProvider = new HttpClientProvider($configManager);
-        $actualResponses = $clientProvider->send($input);
+        $channel = new HttpChannel($configManager);
+        $actualResponses = $channel->send($input);
 
         $this->assertArrayHasKey('GET_http://example.com/comments', $actualResponses);
 

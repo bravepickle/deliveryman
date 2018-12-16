@@ -29,9 +29,9 @@ class Configuration implements ConfigurationInterface
         $rootNode = $treeBuilder->root(self::CONFIG_NAME);
 
         $rootNode->children()
-            ->arrayNode('providers')
+            ->arrayNode('channels')
                 ->requiresAtLeastOneElement()
-                ->info('List of client providers with their custom settings.')
+                ->info('List of client channels with their custom settings.')
                 ->example(['http' => ['debug' => true, 'timeout' => 30, 'allow_redirects' => false]])
                 ->defaultValue([
                     'http' => [

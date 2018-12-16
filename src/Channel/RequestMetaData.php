@@ -1,6 +1,6 @@
 <?php
 
-namespace Deliveryman\ClientProvider;
+namespace Deliveryman\Channel;
 
 
 use Deliveryman\Entity\RequestConfig;

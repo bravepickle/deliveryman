@@ -1,6 +1,6 @@
 <?php
 
-namespace Deliveryman\ClientProvider;
+namespace Deliveryman\Channel;
 
 use Deliveryman\Entity\Request;
 use Deliveryman\Service\ConfigManager;
@@ -9,11 +9,11 @@ use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\RequestOptions;
 
 /**
- * Class HttpClientProvider
+ * Class HttpChannel
  * Send messages over HTTP protocol
- * @package Deliveryman\ClientProvider
+ * @package Deliveryman\Channel
  */
-class HttpClientProvider extends AbstractClientProvider
+class HttpChannel extends AbstractChannel
 {
     /**
      * @var ConfigManager
@@ -35,7 +35,7 @@ class HttpClientProvider extends AbstractClientProvider
      */
     public function createClient()
     {
-        $options = $this->configManager->getConfiguration()['providers'][$this->getName()]['request_options'] ?? [];
+        $options = $this->configManager->getConfiguration()['channels'][$this->getName()]['request_options'] ?? [];
         // never allow throwing exceptions. Statuses should be handled elsewhere
         $options[RequestOptions::HTTP_ERRORS] = false;
 

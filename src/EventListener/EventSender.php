@@ -2,7 +2,7 @@
 
 namespace Deliveryman\EventListener;
 
-use Deliveryman\ClientProvider\ClientProviderInterface;
+use Deliveryman\Channel\ChannelInterface;
 use Deliveryman\Entity\BatchRequest;
 use Symfony\Component\EventDispatcher\Event as BasicEvent;
 
@@ -29,7 +29,7 @@ class EventSender extends BasicEvent
     protected $responses;
 
     /**
-     * @var ClientProviderInterface|null
+     * @var ChannelInterface|null
      */
     protected $clientProvider;
 
@@ -72,18 +72,18 @@ class EventSender extends BasicEvent
     }
 
     /**
-     * @return ClientProviderInterface|null
+     * @return ChannelInterface|null
      */
-    public function getClientProvider(): ?ClientProviderInterface
+    public function getClientProvider(): ?ChannelInterface
     {
         return $this->clientProvider;
     }
 
     /**
-     * @param ClientProviderInterface|null $clientProvider
+     * @param ChannelInterface|null $clientProvider
      * @return EventSender
      */
-    public function setClientProvider(?ClientProviderInterface $clientProvider): EventSender
+    public function setClientProvider(?ChannelInterface $clientProvider): EventSender
     {
         $this->clientProvider = $clientProvider;
 

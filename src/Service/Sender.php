@@ -3,7 +3,7 @@
 namespace Deliveryman\Service;
 
 
-use Deliveryman\ClientProvider\ClientProviderInterface;
+use Deliveryman\Channel\ChannelInterface;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
 use Deliveryman\Entity\Request;
@@ -26,9 +26,9 @@ use Symfony\Component\Serializer\Encoder\JsonEncoder;
 class Sender
 {
     /**
-     * @var ClientProviderInterface
+     * @var ChannelInterface
      */
-    protected $clientProvider;
+    protected $channel;
 
     /**
      * @var EventDispatcherInterface|null
@@ -47,19 +47,19 @@ class Sender
 
     /**
      * Sender constructor.
-     * @param ClientProviderInterface $clientProvider
+     * @param ChannelInterface $channel
      * @param ConfigManager $configManager
      * @param BatchRequestValidator $batchRequestValidator
      * @param EventDispatcherInterface|null $dispatcher
      */
     public function __construct(
-        ClientProviderInterface $clientProvider,
+        ChannelInterface $channel,
         ConfigManager $configManager,
         BatchRequestValidator $batchRequestValidator,
         ?EventDispatcherInterface $dispatcher = null
     )
     {
-        $this->clientProvider = $clientProvider;
+        $this->channel = $channel;
         $this->configManager = $configManager;
         $this->dispatcher = $dispatcher;
         $this->validator = $batchRequestValidator;
@@ -82,13 +82,13 @@ class Sender
         // 4. dispatch events per requests, queues etc.
         // 5. validate batch request allowed by master config
 
-        $this->clientProvider->clearErrors();
+        $this->channel->clearErrors();
 
         if (!$batchRequest->getQueues()) {
             throw new SendingException('No queues with requests specified to process.');
         }
 
-        $clientProvider = $this->clientProvider;
+        $clientProvider = $this->channel;
 
         $errors = $this->validator->validate($batchRequest);
         if (!empty($errors)) {
@@ -117,7 +117,7 @@ class Sender
     }
 
     /**
-     * @param ClientProviderInterface $clientProvider
+     * @param ChannelInterface $clientProvider
      * @param array|ResponseInterface[] $responses
      * @param BatchRequest $batchRequest
      * @return BatchResponse
@@ -125,7 +125,7 @@ class Sender
      * @throws SerializationException
      */
     protected function wrapResponses(
-        ClientProviderInterface $clientProvider,
+        ChannelInterface $clientProvider,
         array $responses,
         BatchRequest $batchRequest
     ): BatchResponse

@@ -4,17 +4,17 @@
  * Time: 14:07
  */
 
-namespace Deliveryman\ClientProvider;
+namespace Deliveryman\Channel;
 
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 /**
- * Interface ClientProviderInterface
+ * Interface ChannelInterface
  * Defines actions required to handle requests
- * @package Deliveryman\ClientProvider
+ * @package Deliveryman\Channel
  */
-interface ClientProviderInterface
+interface ChannelInterface
 {
 //    /**
 //     * Send single request and receive response
