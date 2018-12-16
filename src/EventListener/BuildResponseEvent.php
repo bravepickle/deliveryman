@@ -2,6 +2,7 @@
 
 namespace Deliveryman\EventListener;
 
+use Deliveryman\Entity\RequestConfig;
 use Deliveryman\Entity\Response;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\EventDispatcher\Event as BasicEvent;
@@ -24,14 +25,20 @@ class BuildResponseEvent extends BasicEvent
     protected $sourceResponse;
 
     /**
+     * @var RequestConfig|null
+     */
+    protected $requestConfig;
+
+    /**
      * BuildResponseEvent constructor.
      * @param Response|null $targetResponse
      * @param ResponseInterface $sourceResponse
      */
-    public function __construct(?Response $targetResponse, ?ResponseInterface $sourceResponse)
+    public function __construct(?Response $targetResponse, ?ResponseInterface $sourceResponse, ?RequestConfig $requestConfig)
     {
         $this->targetResponse = $targetResponse;
         $this->sourceResponse = $sourceResponse;
+        $this->requestConfig = $requestConfig;
     }
 
     /**
@@ -69,6 +76,24 @@ class BuildResponseEvent extends BasicEvent
     {
         $this->sourceResponse = $sourceResponse;
 
+        return $this;
+    }
+
+    /**
+     * @return RequestConfig|null
+     */
+    public function getRequestConfig(): ?RequestConfig
+    {
+        return $this->requestConfig;
+    }
+
+    /**
+     * @param RequestConfig|null $requestConfig
+     * @return BuildResponseEvent
+     */
+    public function setRequestConfig(?RequestConfig $requestConfig): BuildResponseEvent
+    {
+        $this->requestConfig = $requestConfig;
         return $this;
     }
 

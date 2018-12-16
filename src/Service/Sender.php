@@ -135,7 +135,15 @@ class Sender
         $batchResponse = new BatchResponse();
 
         if (empty($config['silent']) && $responses) {
-            $batchResponse->setData($this->buildResponses($responses, $batchRequest));
+            list($okResp, $failResp) = $this->buildResponses($responses, $batchRequest);
+
+            if ($okResp) {
+                $batchResponse->setData($okResp);
+            }
+
+            if ($failResp) {
+                $batchResponse->setErrors($failResp);
+            }
         }
 
         if ($clientProvider->hasErrors()) {
@@ -188,32 +196,18 @@ class Sender
     /**
      * Map requests meta data to Ids
      * @param BatchRequest $batchRequest
-     * @param string $defaultFormat
-     * @return array
+     * @return array|RequestConfig[]
      * @throws SerializationException
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function mapMetaRequestIds(BatchRequest $batchRequest, string $defaultFormat): array
+    protected function mergeConfigsPerRequest(BatchRequest $batchRequest): array
     {
         $appConfig = $this->getMasterConfig();
         $requestsMap = $this->mapRequestIds($batchRequest->getQueues());
         $map = [];
         /** @var Request $request */
         foreach ($requestsMap as $request) {
-//            $requestConfig = $this->buildRequestConfig($request, $batchRequest, $appConfig);
             $map[$request->getId()] = $this->buildRequestConfig($request, $batchRequest, $appConfig);
-
-//            if ($requestConfig && $requestConfig->getFormat()) {
-//                $map[$request->getId()]['format'] = $requestConfig->getFormat();
-//            } else {
-//                $map[$request->getId()]['format'] = $defaultFormat;
-//            }
-//
-//            if ($requestConfig && $requestConfig->getFormat()) {
-//                $map[$request->getId()]['format'] = $requestConfig->getFormat();
-//            } else {
-//                $map[$request->getId()]['format'] = $defaultFormat;
-//            }
         }
 
         return $map;
@@ -228,39 +222,47 @@ class Sender
      */
     protected function buildResponses(array $responses, BatchRequest $batchRequest): array
     {
-        $defaultFormat = $this->getMasterConfig()['resourceFormat'];
-        $metaMap = $this->mapMetaRequestIds($batchRequest, $defaultFormat);
+        $cfgMap = $this->mergeConfigsPerRequest($batchRequest);
         $succeededResp = [];
         $failedResp = [];
 
         // TODO: check expected status codes and split responses to good and bad
 
         foreach ($responses as $id => $srcResponse) {
+            // TODO: dispatcher extend with config request resulting object
+            // TODO: add headers from config
+
+            $requestConfig = $cfgMap[$id];
+
             $targetResponse = new Response();
             $targetResponse->setId($id);
             $targetResponse->setStatusCode($srcResponse->getStatusCode());
-            $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
 
-            $this->genResponseBody($metaMap[$id]['format'], $srcResponse, $targetResponse);
-
-            if ($this->dispatcher) {
-                $event = new BuildResponseEvent($targetResponse, $srcResponse);
-                $this->dispatcher->dispatch(BuildResponseEvent::EVENT_POST_BUILD, $event);
-                $targetResponse = $event->getTargetResponse();
+            if ($requestConfig->getHeaders()) {
+                $targetResponse->setHeaders(array_merge(
+                    $requestConfig->getHeaders(), $this->buildResponseHeaders($srcResponse)
+                ));
+            } else {
+                $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
             }
 
-            // TODO: merge configs strategy
+            $this->genResponseBody($requestConfig->getFormat(), $srcResponse, $targetResponse);
 
-//            $srcResponse->
-//
-//            if ($srcResponse->getStatusCode()) {
-//
-//            }
+            if ($this->dispatcher) {
+                $event = new BuildResponseEvent($targetResponse, $srcResponse, $requestConfig);
+                $this->dispatcher->dispatch(BuildResponseEvent::EVENT_POST_BUILD, $event);
+                $targetResponse = $event->getTargetResponse();
+                $requestConfig = $event->getRequestConfig();
+            }
 
-            $succeededResp[$targetResponse->getId()] = $targetResponse;
+            if (in_array($srcResponse->getStatusCode(), $requestConfig->getExpectedStatusCodes())) {
+                $succeededResp[$targetResponse->getId()] = $targetResponse;
+            } else {
+                $failedResp[$targetResponse->getId()] = $targetResponse;
+            }
         }
 
-        return $succeededResp;
+        return [$succeededResp, $failedResp];
     }
 
     /**
@@ -310,7 +312,7 @@ class Sender
      * @param Request $request
      * @param BatchRequest $batchRequest
      * @param array $appConfig
-     * @return RequestConfig|null
+     * @return RequestConfig
      * @throws SerializationException
      */
     protected function buildRequestConfig(Request $request, BatchRequest $batchRequest, array $appConfig)
@@ -319,7 +321,11 @@ class Sender
         $generalCfg = $batchRequest->getConfig();
 
         if (!$generalCfg) {
-            return $requestCfg ? clone $requestCfg : null; // nothing to merge, avoid affecting initial configs
+            if ($requestCfg) {
+                return clone $requestCfg;
+            }
+
+            return $this->genDefaultConfig($appConfig);
         }
 
         if ($requestCfg) {
@@ -327,31 +333,10 @@ class Sender
                 $appConfig['configMerge'];
 
             switch ($cfgMergeStrategy) {
-                case RequestConfig::CONFIG_MERGE_FIRST:
-                    return clone $requestCfg; // do nothing. Already is set
-
+                case RequestConfig::CONFIG_MERGE_FIRST: return clone $requestCfg; // do nothing. Already is set
                 case RequestConfig::CONFIG_MERGE_UNIQUE:
-                    $newConfig = new RequestConfig();
-
-                    $newConfig->setFormat($requestCfg->getFormat() ??
-                        $generalCfg->getFormat() ?? $appConfig['resourceFormat']);
-
-                    $newConfig->setSilent($appConfig['silent'] ?:
-                        $requestCfg->getSilent() ?? $generalCfg->getSilent());
-
-                    $newConfig->setOnFail($requestCfg->getOnFail() ??
-                        $generalCfg->getOnFail() ?? $appConfig['onFail']);
-
-                    $newConfig->setConfigMerge($cfgMergeStrategy);
-
-                    $this->mergeHeaders($newConfig, $requestCfg, $generalCfg, $appConfig);
-                    $this->mergeExpectedStatusCodes($newConfig, $requestCfg, $generalCfg, $appConfig);
-
-                    return $newConfig;
-
-                case RequestConfig::CONFIG_MERGE_IGNORE:
-                    return null; // ignoring all data, even if set. Look into app config only
-
+                    return $this->mergeRequestConfigScopes($appConfig, $requestCfg, $generalCfg, $cfgMergeStrategy);
+                case RequestConfig::CONFIG_MERGE_IGNORE: return $this->genDefaultConfig($appConfig);
                 default:
                     throw new SerializationException('Unexpected config merge strategy type: ' .
                         $cfgMergeStrategy
@@ -424,5 +409,51 @@ class Sender
         if (!$newConfig->getExpectedStatusCodes()) {
             $newConfig->setExpectedStatusCodes($appConfig['expectedStatusCodes']); // none were set in batch
         }
+    }
+
+    /**
+     * @param array $appConfig
+     * @return RequestConfig
+     */
+    protected function genDefaultConfig(array $appConfig): RequestConfig
+    {
+// take all default values from app config
+        $newConfig = new RequestConfig();
+        $newConfig->setFormat($appConfig['resourceFormat']);
+        $newConfig->setSilent($appConfig['silent']);
+        $newConfig->setOnFail($appConfig['onFail']);
+        $newConfig->setConfigMerge($appConfig['configMerge']);
+        $newConfig->setHeaders($appConfig['headers']);
+        $newConfig->setExpectedStatusCodes($appConfig['expectedStatusCodes']);
+
+        return $newConfig;
+    }
+
+    /**
+     * @param array $appConfig
+     * @param RequestConfig|null $requestCfg
+     * @param RequestConfig|null $generalCfg
+     * @param string|null $cfgMergeStrategy
+     * @return RequestConfig
+     */
+    protected function mergeRequestConfigScopes(array $appConfig, ?RequestConfig $requestCfg, ?RequestConfig $generalCfg, ?string $cfgMergeStrategy): RequestConfig
+    {
+        $newConfig = new RequestConfig();
+
+        $newConfig->setFormat($requestCfg->getFormat() ??
+            $generalCfg->getFormat() ?? $appConfig['resourceFormat']);
+
+        $newConfig->setSilent($appConfig['silent'] ?:
+            $requestCfg->getSilent() ?? $generalCfg->getSilent());
+
+        $newConfig->setOnFail($requestCfg->getOnFail() ??
+            $generalCfg->getOnFail() ?? $appConfig['onFail']);
+
+        $newConfig->setConfigMerge($cfgMergeStrategy);
+
+        $this->mergeHeaders($newConfig, $requestCfg, $generalCfg, $appConfig);
+        $this->mergeExpectedStatusCodes($newConfig, $requestCfg, $generalCfg, $appConfig);
+
+        return $newConfig;
     }
 }
