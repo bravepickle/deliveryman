@@ -47,6 +47,8 @@ class BatchRequestValidator
     {
         $errors = [];
 
+        // TODO: validate request configs settings - allowed values, allowed formats etc
+
         $this->validateQueues($batchRequest, $errors);
 //        $this->validateGeneralBatchConfig($batchRequest, $errors);
         $this->validateRequests($batchRequest, $errors);

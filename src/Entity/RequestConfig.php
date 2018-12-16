@@ -7,6 +7,10 @@ use Deliveryman\Normalizer\NormalizableInterface;
 
 class RequestConfig implements NormalizableInterface
 {
+    const CONFIG_MERGE_FIRST = 'first';
+    const CONFIG_MERGE_UNIQUE = 'unique';
+    const CONFIG_MERGE_IGNORE = 'ignore';
+
     /**
      * List of requests to send together with request
      * @var RequestHeader[]|null|array
