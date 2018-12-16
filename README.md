@@ -29,6 +29,69 @@ Attention! Configs should be properly defined! Do not forget to whitelist allowe
 
 ## Features
 
+## Concept
+
+In this section we'll talk about concepts that were used for this library, terms definitions etc.
+
+### Dictionary
+*Agent* - an entity that is authorized to act on behalf of another (called the *principal*) to create 
+relations with a *third party*. This is what an application integrated with *Deliveryman* library is doing.
+
+*Principal*, *client* - is an entity, who authorizes an *agent* to act to communicate with a *third party*. 
+Principals examples: web application, JS web client in browser, another web server, mobile application, scripts. 
+
+*Third party*, *receiver* - a target entity, which *principal* wishes to interact with. 
+Third parties examples: remote web server, database, file storage, message queue server, web chats, same web server's other endpoints (used for aggregations).
+
+*Communication channel*, *channel* - API, medium for transmitting data from *agent* to *third party*. 
+Channels examples: HTTP API, message queue API, file storage API, SQL queries, any other API for interaction.
+
+*Contract* - a promise or set of promises between *principal*, *agent* and *third parties*. 
+Each party to a contract acquires rights and duties relative to the rights and duties of the other parties. 
+It describes how *agent* should communicate with *third parties* and how to process results before sending 
+them back to principal. In our case a contract is a batch request's body that sends from *client* to *agent* 
+with list of requests and settings.
+
+*Queue* - ordered requests queue, that must be run sequentially. Request fail may terminate the rest of the queue.
+
+*Batch request* - an entity that contains contract definition for given set of requests. It is sent from *principal* to *agent*.
+
+*Batch response* - an entity that is being returned to *principal* from *agent* after processing requests from *batch request*.
+
+### Definition
+In theory, everything is rather simple. A principal wants to send some requests in certain order to one or multiple 
+third parties. Principal has some expectations on what kind of data can be received for given requests. Instead of 
+sending those requests directly, principal uses agent to send them. Principal prepares a set of requests, rules 
+and describes how responses should be handled in different scenarios. Prepared document is called contract and it is 
+sent within body of batch request it sends to agent. Agent receives batch request together with contract, validates its
+contents and, if everything is fine, processes requests according to provided rules, then it returns formatted response
+to principal with aggregated results.
+
+Each valid request will be sent from agent to third party over dedicated communication channel defined in configuration. 
+Channels prepare requests for usage together with given implementation of PAI, dispatch some events, receive responses 
+and format them to the unified manner before sending back to agent higher levels abstractions.
+
+Single batch request contains list of one or more queues of requests. Queues can be processed in parallel asynchronously. 
+Within single queue requests are run in sequence synchronously according to provided order. In addition batch request,
+may include general settings for this batch of requests and custom ones for each individual request. It makes it 
+possible to customize properly contract to fit in better to expectations.
+
+It is possible to extend greatly functionality by using dispatched events hooks mechanism, define your own implementations
+of communication APIs and processing.
+
+The following steps should be taken to make agent working properly:
+1. Install *Deliveryman* library, use bundle, if using Symfony framework
+1. Create endpoint for principal be able to call and specify auth for it, if needed
+1. Configure library, according to expectations. Following things should be considered:
+    1. Domains allowed to work with
+    1. Headers processing rules. Which allowed to be returned to principal? Which could be sent to third party? 
+    1. Security considerations: CORS, Cookies support, authorization, authentication 
+    1. Performance: profiling, requests rate limit, timeouts, response max body size, maximum number of requests in queue and in total.
+    1. Logging requests and errors
+    1. What configuration settings should be available for principal to modify?
+    1. Which responses and their data should be returned to principal after processing?
+1. Use OpenAPI document for understanding API format used for application
+
 ## Installation
 
 ## Configuration
