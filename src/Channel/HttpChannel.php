@@ -43,9 +43,16 @@ class HttpChannel extends AbstractChannel
      */
     public function createClient()
     {
-        $options = $this->configManager->getConfiguration()['channels'][$this->getName()]['request_options'] ?? [];
+        $appConfig = $this->configManager->getConfiguration();
+        $options = $appConfig['channels'][$this->getName()]['request_options'] ?? [];
+
         // never allow throwing exceptions. Statuses should be handled elsewhere
         $options[RequestOptions::HTTP_ERRORS] = false;
+
+        // append headers from app config to channel config
+        foreach ($appConfig['headers'] as $header) {
+            $options[RequestOptions::HEADERS][$header['name']] = $header['value'];
+        }
 
         return new Client($options);
     }
@@ -256,7 +263,6 @@ class HttpChannel extends AbstractChannel
         }
 
         if ($request->getHeaders()) {
-            $options[RequestOptions::HEADERS] = [];
             foreach ($request->getHeaders() as $header) {
                 $options[RequestOptions::HEADERS][$header->getName()][] = $header->getValue();
             }
