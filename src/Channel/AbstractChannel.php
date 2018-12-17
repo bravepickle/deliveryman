@@ -3,6 +3,8 @@
 namespace Deliveryman\Channel;
 
 
+use Psr\Http\Message\ResponseInterface;
+
 abstract class AbstractChannel implements ChannelInterface
 {
     /**
@@ -11,13 +13,26 @@ abstract class AbstractChannel implements ChannelInterface
     protected $errors = [];
 
     /**
+     * @var array|ResponseInterface[]
+     */
+    protected $failedResponses = [];
+
+    /**
+     * @var array|ResponseInterface[]
+     */
+    protected $okResponses = [];
+
+    /**
      * Add error
      * @param $path
      * @param $message
+     * @return $this
      */
     protected function addError($path, $message)
     {
-        $this->errors[] = ['path' => $path, 'message' => $message];
+        $this->errors[$path] = $message;
+
+        return $this;
     }
 
     /**
@@ -43,4 +58,81 @@ abstract class AbstractChannel implements ChannelInterface
     {
         return !empty($this->errors);
     }
+
+    /**
+     * @inheritdoc
+     */
+    public function hasFailedResponses(): bool
+    {
+        return !empty($this->failedResponses);
+    }
+
+    /**
+     * @return array|ResponseInterface[]
+     */
+    public function getFailedResponses(): array
+    {
+        return $this->failedResponses;
+    }
+
+    /**
+     * Add failed response
+     * @param $path
+     * @param ResponseInterface $response
+     * @return $this
+     */
+    protected function addFailedResponse($path, ResponseInterface $response)
+    {
+        $this->failedResponses[$path] = $response;
+
+        return $this;
+    }
+
+    /**
+     * Add succeeded response
+     * @param $path
+     * @param ResponseInterface $response
+     * @return $this
+     */
+    protected function addOkResponse($path, ResponseInterface $response)
+    {
+        $this->okResponses[$path] = $response;
+
+        return $this;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function hasOkResponses(): bool
+    {
+        return !empty($this->okResponses);
+    }
+
+    /**
+     * @return array|ResponseInterface[]
+     */
+    public function getOkResponses(): array
+    {
+        return $this->okResponses;
+    }
+
+    public function clearOkResponses(): void
+    {
+        $this->okResponses = [];
+    }
+
+    public function clearFailedResponses(): void
+    {
+        $this->failedResponses = [];
+    }
+
+    public function clear(): void
+    {
+        $this->clearErrors();
+        $this->clearFailedResponses();
+        $this->clearOkResponses();
+    }
+
+
 }

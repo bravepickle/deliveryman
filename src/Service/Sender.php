@@ -84,7 +84,7 @@ class Sender
         // 4. dispatch events per requests, queues etc.
         // 5. validate batch request allowed by master config
 
-        $this->channel->clearErrors();
+        $this->channel->clear();
 
         if (!$batchRequest->getQueues()) {
             throw new SendingException('No queues with requests specified to process.');
@@ -96,6 +96,8 @@ class Sender
         if (!empty($errors)) {
             return $this->wrapErrors($errors);
         }
+
+        $requests = $this->mergeConfigsPerRequest($batchRequest);
 
         $aborted = false;
         if (!$this->dispatcher) {
@@ -116,28 +118,28 @@ class Sender
             $channel = $event->getChannel();
         }
 
-        return $this->wrapResponses($channel, $responses, $batchRequest, $aborted);
+        return $this->wrapResponses($channel, $responses, $requests, $aborted);
     }
 
     /**
      * @param ChannelInterface $channel
      * @param array|ResponseInterface[] $responses
-     * @param BatchRequest $batchRequest
+     * @param array|Request[] $requests
      * @param bool $aborted
      * @return BatchResponse
      * @throws SerializationException
-     * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function wrapResponses(
         ChannelInterface $channel,
         array $responses,
-        BatchRequest $batchRequest,
+        array $requests,
         bool $aborted
     ): BatchResponse
     {
         $batchResponse = new BatchResponse();
         if ($aborted) {
             $batchResponse->setStatus(BatchResponse::STATUS_ABORTED);
+            $batchResponse->setErrors($channel->getErrors());
         } else {
             if ($channel->hasErrors()) {
                 $batchResponse->setStatus(BatchResponse::STATUS_FAILED);
@@ -149,7 +151,6 @@ class Sender
         }
 
         if ($responses) {
-            $requests = $this->mergeConfigsPerRequest($batchRequest);
             list($okResp, $failResp) = $this->buildResponses($responses, $requests);
 
             if ($okResp) {
@@ -459,10 +460,11 @@ class Sender
     protected function dispatchSend(BatchRequest $batchRequest, ChannelInterface $channel, bool &$aborted = false)
     {
         try {
-            return $channel->send($batchRequest->getQueues());
+            $channel->send($batchRequest->getQueues());
         } catch (ChannelException $e) {
             $aborted = true;
-            return $e->getResponses();
         }
+
+        return $channel->getOkResponses();
     }
 }

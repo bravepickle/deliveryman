@@ -19,11 +19,13 @@ use GuzzleHttp\Psr7\Response;
 use function GuzzleHttp\Psr7\stream_for;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
+use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
 use Symfony\Component\Serializer\Mapping\Loader\YamlFileLoader;
 use Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer;
 use Symfony\Component\Serializer\Serializer;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Class IntegrationTest
@@ -31,6 +33,28 @@ use Symfony\Component\Serializer\Serializer;
  */
 class IntegrationTest extends TestCase
 {
+    /**
+     * Data sets for data provider taken from parsed files
+     * @var array
+     */
+    protected static $fixtures;
+
+    /**
+     * Load data fixtures for the class
+     * @param string $name
+     * @return array|mixed
+     */
+    public static function getFixtures(string $name)
+    {
+        if (self::$fixtures !== null) {
+            return self::$fixtures[$name] ?? [];
+        }
+
+        self::$fixtures = Yaml::parseFile(__DIR__ . '/../Resources/fixtures/integration.fixtures.yaml');
+
+        return self::$fixtures[$name] ?? [];
+    }
+
     /**
      * @return Serializer
      */
@@ -61,7 +85,7 @@ class IntegrationTest extends TestCase
 
     /**
      * @dataProvider batchRequestProvider
-     * @dataProvider configProvider
+     * @ dataProvider configProvider
      * @param array $config
      * @param array $input
      * @param array $responses
@@ -77,7 +101,8 @@ class IntegrationTest extends TestCase
         array $responses,
         array $expectedRequests,
         array $output
-    ) {
+    )
+    {
         $mockHandler = new MockHandler($responses);
         $config['channels']['http']['request_options']['handler'] = HandlerStack::create(function (
             RequestInterface $request,
@@ -106,7 +131,7 @@ class IntegrationTest extends TestCase
         $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json'));
         $actual = $serializer->normalize($batchResponse);
 
-//        print_r($actual);
+        print_r($actual);
 
         $this->assertEquals($output, $actual);
     }
@@ -117,75 +142,7 @@ class IntegrationTest extends TestCase
      */
     public function batchRequestProvider()
     {
-        return [
-            [
-                'config' => [
-                    'domains' => ['http://example.com',],
-                    'channels' => [
-                        'http' => [
-                            'request_options' => [
-                                'debug' => false,
-                                'allow_redirects' => false,
-                                'headers' => [
-                                    'User-Agent' => ['testing/1.0'],
-                                ],
-                            ],
-                        ],
-                    ],
-                ],
-
-                'input' => [
-                    'queues' => [
-                        [
-                            ['uri' => 'http://example.com/ask-something', 'id' => 'ask-something'],
-                            ['uri' => 'http://example.com/do-something', 'method' => 'PUT', 'data' => 'encoded_text']
-                        ],
-                    ],
-                ],
-
-                'responses' => [
-                    new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
-                    new Response(204, ['Content-Type' => ['application/json']]),
-                ],
-
-                'sentRequests' => [
-                    new Request('GET', 'http://example.com/ask-something', ['User-Agent' => ['testing/1.0'],], ''),
-                    new Request('PUT', 'http://example.com/do-something', ['User-Agent' => ['testing/1.0'], 'Content-Length' => ['12']], 'encoded_text'),
-                ],
-
-                'output' => [
-                    'data' => [
-                        'ask-something' => [
-                            'id' => 'ask-something',
-                            'headers' => [
-                                [
-                                    'name' => 'Content-Type',
-                                    'value' => 'application/json',
-                                ],
-                            ],
-                            'statusCode' => 200,
-                            'data' => [
-                                'success' => true,
-                            ],
-                        ],
-
-                        'PUT_http://example.com/do-something' => [
-                            'id' => 'PUT_http://example.com/do-something',
-                            'headers' => [
-                                [
-                                    'name' => 'Content-Type',
-                                    'value' => 'application/json',
-                                ],
-                            ],
-                            'statusCode' => 204,
-                            'data' => null,
-                        ],
-                    ],
-                    'status' => 'ok',
-                    'errors' => null,
-                ],
-            ],
-        ];
+        return $this->prepareProviderData(self::getFixtures(__FUNCTION__));
     }
 
     /**
@@ -194,154 +151,34 @@ class IntegrationTest extends TestCase
      */
     public function configProvider()
     {
-        return [
-            [ // silent output
-                'config' => [
-                    'domains' => ['http://example.com',],
-                    'silent' => true,
-                    'channels' => [
-                        'http' => [
-                            'request_options' => [
-                                'headers' => [
-                                    'User-Agent' => ['testing/1.0'],
-                                ],
-                            ]
-                        ]
-                    ]
-                ],
+        return $this->prepareProviderData(self::getFixtures(__FUNCTION__));
+    }
 
-                'input' => [
-                    'queues' => [
-                        ['uri' => 'http://example.com/ask-something', 'id' => '#45'],
-                    ],
-                ],
+    /**
+     * @param array $data
+     * @return array
+     */
+    protected function prepareProviderData(array $data): array
+    {
+        foreach ($data as $key => $datum) {
+            foreach ($datum['responses'] as $subKey => $response) {
+                $data[$key]['responses'][$subKey] = new Response(
+                    $response['statusCode'] ?? null,
+                    $response['headers'] ?? null,
+                    $response['data'] ?? null
+                );
+            }
 
-                'responses' => [
-                    new Response(200, ['Content-Type' => ['application/json']], '{"success":true}'),
-                ],
-
-                'sentRequests' => [
-                    new Request('GET', 'http://example.com/ask-something', ['User-Agent' => ['testing/1.0'],], ''),
-                ],
-
-                'output' => [
-                    'data' => null,
-                    'status' => 'ok',
-                    'errors' => null,
-                ],
-            ],
-            [ // silent output with errors
-                'config' => [
-                    'domains' => ['http://example.com',],
-                    'silent' => true,
-                    'channels' => [
-                        'http' => [
-                            'request_options' => [
-                                'headers' => [
-                                    'User-Agent' => ['testing/1.0'],
-                                ],
-                            ]
-                        ]
-                    ],
-                    'expected_status_codes' => [200]
-                ],
-
-                'input' => [
-                    'queues' => [
-                        ['uri' => 'http://example.com/ask-something', 'id' => '#45'],
-                        ['uri' => 'http://example.com/be-something', 'id' => '#46', 'method' => 'post', 'data' => ['user' => 'john']],
-                    ],
-                ],
-
-                'responses' => [
-                    new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
-                    new Response(500, ['Content-Type' => ['application/json'],], stream_for('{"err":"server error"}')),
-                ],
-
-                'sentRequests' => [
-                    new Request('GET', 'http://example.com/ask-something', ['User-Agent' => ['testing/1.0'],], ''),
-                    new Request('POST', 'http://example.com/be-something', [
-                        'User-Agent' => ['testing/1.0'],
-                        'Content-Length' => '15',
-                        'Content-Type' => 'application/json',
-                    ], '{"user":"john"}'),
-                ],
-
-                'output' => [
-                    'data' => null,
-                    'status' => 'failed',
-                    'errors' => [
-                        '#46' => [
-                            'id' => '#46',
-                            'headers' => [
-                                [
-                                    'name' => 'Content-Type',
-                                    'value' => 'application/json',
-                                ],
-                            ],
-                            'statusCode' => 500,
-                            'data' => [
-                                'err' => 'server error',
-                            ],
-                        ],
-                    ],
-                ],
-            ],
-            [ // partial silent output on request level
-                'config' => [
-                    'domains' => ['http://example.com',],
-                    'silent' => false,
-                    'channels' => [
-                        'http' => [
-                            'request_options' => [
-                                'headers' => [
-                                    'User-Agent' => ['testing/1.0'],
-                                ],
-                            ]
-                        ]
-                    ],
-                ],
-
-                'input' => [
-                    'queues' => [
-                        [
-                            ['uri' => 'http://example.com/foo', 'id' => '#45', 'config' => ['silent' => true]],
-                            ['uri' => 'http://example.com/bar', 'id' => '#46'],
-                        ],
-                    ],
-                ],
-
-                'responses' => [
-                    new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
-                    new Response(200, ['X-API' => ['123']], stream_for('{"data":"ok"}')),
-                ],
-
-                'sentRequests' => [
-                    new Request('GET', 'http://example.com/foo', ['User-Agent' => ['testing/1.0'],], ''),
-                    new Request('GET', 'http://example.com/bar', ['User-Agent' => ['testing/1.0'],], ''),
-                ],
-
-                'output' => [
-                    'errors' => null,
-                    'status' => 'ok',
-                    'data' => [
-                        '#46' => [
-                            'id' => '#46',
-                            'headers' => [
-                                [
-                                    'name' => 'X-API',
-                                    'value' => '123',
-                                ],
-                            ],
-                            'statusCode' => 200,
-                            'data' => [
-                                'data' => 'ok',
-                            ],
-                        ],
-                    ],
-                ],
-            ],
-        ];
+            foreach ($datum['sentRequests'] as $subKey => $request) {
+                $data[$key]['sentRequests'][$subKey] = new Request(
+                    $request['method'] ?? null,
+                    $request['uri'] ?? null,
+                    $request['headers'] ?? null,
+                    $request['data'] ?? null
+                );
+            }
+        }
+        return $data;
     }
 
 }

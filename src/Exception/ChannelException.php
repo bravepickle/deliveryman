@@ -20,33 +20,9 @@ class ChannelException extends BaseException
     protected $message = self::MSG_DEFAULT;
 
     /**
-     * @var array
-     */
-    protected $responses = [];
-
-    /**
      * @var Request|null
      */
     protected $request;
-
-    /**
-     * @return array
-     */
-    public function getResponses(): array
-    {
-        return $this->responses;
-    }
-
-    /**
-     * @param array $responses
-     * @return ChannelException
-     */
-    public function setResponses(array $responses): ChannelException
-    {
-        $this->responses = $responses;
-
-        return $this;
-    }
 
     /**
      * @return Request|null

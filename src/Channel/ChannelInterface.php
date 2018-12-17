@@ -17,21 +17,6 @@ use Psr\Http\Message\ResponseInterface;
  */
 interface ChannelInterface
 {
-//    /**
-//     * Send single request and receive response
-//     * @param RequestInterface $request
-//     * @param RequestMetaDataInterface|null $metaData
-//     * @return mixed
-//     */
-//    public function send(RequestInterface $request, ?RequestMetaDataInterface $metaData);
-//
-//    /**
-//     * Send many requests in sequence
-//     * @param array|RequestInterface[] $requests list of requests or associated map
-//     * @return ResponseInterface[]|array|null list of responses with keys as they were in request
-//     */
-//    public function sendQueue(array $requests);
-
     /**
      * Get client provider's name that is used within configuration. Must be unique
      * @return mixed
@@ -64,5 +49,46 @@ interface ChannelInterface
      * Remove all errors from list
      */
     public function clearErrors(): void;
+
+    /**
+     * Return all responses that considered as succeeded
+     * with keys taken from request data
+     * @return array|ResponseInterface[]
+     */
+    public function getOkResponses(): array;
+
+    /**
+     * Return true if has errors
+     * @return bool
+     */
+    public function hasOkResponses(): bool;
+
+    /**
+     * Remove all responses from list
+     */
+    public function clearOkResponses(): void;
+
+    /**
+     * Return all errors that appeared during last session of sending data
+     * with keys taken from request data
+     * @return array|ResponseInterface[]
+     */
+    public function getFailedResponses(): array;
+
+    /**
+     * Return true if has errors
+     * @return bool
+     */
+    public function hasFailedResponses(): bool;
+
+    /**
+     * Remove all errors from list
+     */
+    public function clearFailedResponses(): void;
+
+    /**
+     * Clear all generated data: responses, errors
+     */
+    public function clear(): void;
 
 }
