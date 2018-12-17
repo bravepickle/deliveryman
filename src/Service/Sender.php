@@ -363,37 +363,6 @@ class Sender
      * @param RequestConfig|null $generalCfg
      * @param array $appConfig
      */
-    protected function mergeHeaders(RequestConfig $newConfig, ?RequestConfig $requestCfg, ?RequestConfig $generalCfg, array $appConfig): void
-    {
-        $headers = [];
-        $generalHeaders = $generalCfg && $generalCfg->getHeaders() ? $generalCfg->getHeaders() : [];
-        $reqHeaders = $requestCfg && $requestCfg->getHeaders() ? $requestCfg->getHeaders() : [];
-
-        if (!$reqHeaders) {
-            $headers = $generalHeaders;
-        } elseif ($generalHeaders) {
-            $foundHeaders = [];
-            foreach ($reqHeaders as $header) {
-                $foundHeaders[] = $header->getName();
-                $headers[] = clone $header;
-            }
-
-            foreach ($generalHeaders as $genHeader) {
-                if (!in_array($genHeader->getName(), $foundHeaders)) {
-                    $headers[] = clone $genHeader; // only not set headers are added
-                }
-            }
-        }
-
-        $newConfig->setHeaders($headers);
-    }
-
-    /**
-     * @param RequestConfig $newConfig
-     * @param RequestConfig|null $requestCfg
-     * @param RequestConfig|null $generalCfg
-     * @param array $appConfig
-     */
     protected function mergeExpectedStatusCodes(RequestConfig $newConfig, ?RequestConfig $requestCfg, ?RequestConfig $generalCfg, array $appConfig): void
     {
         // TODO: set status codes from app config if not set here
@@ -457,8 +426,6 @@ class Sender
             $generalCfg->getOnFail() ?? $appConfig['on_fail']);
 
         $newConfig->setConfigMerge($cfgMergeStrategy);
-
-        $this->mergeHeaders($newConfig, $requestCfg, $generalCfg, $appConfig);
         $this->mergeExpectedStatusCodes($newConfig, $requestCfg, $generalCfg, $appConfig);
 
         return $newConfig;
@@ -478,7 +445,6 @@ class Sender
         $newConfig->setOnFail($requestCfg->getOnFail() ?? $appConfig['on_fail']);
         $newConfig->setConfigMerge($requestCfg->getConfigMerge() ?? $appConfig['config_merge']);
 
-        $this->mergeHeaders($newConfig, $requestCfg, null, $appConfig);
         $this->mergeExpectedStatusCodes($newConfig, $requestCfg, null, $appConfig);
 
         return $newConfig;

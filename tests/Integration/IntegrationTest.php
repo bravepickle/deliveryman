@@ -60,7 +60,7 @@ class IntegrationTest extends TestCase
     }
 
     /**
-     * @ dataProvider batchRequestProvider
+     * @dataProvider batchRequestProvider
      * @dataProvider configProvider
      * @param array $config
      * @param array $input
@@ -84,12 +84,13 @@ class IntegrationTest extends TestCase
             array $options
         ) use ($mockHandler, &$expectedRequests) {
             $expected = array_shift($expectedRequests);
-//            var_dump($expected);
-//            var_dump((string)$request->getBody());
-//
-//            die("\n" . __METHOD__ . ':' . __FILE__ . ':' . __LINE__ . "\n");
 
-            $this->assertEquals($expected, $request, 'Sent request data differs from expected.');
+//            print_r($request->getHeaders());
+
+            $this->assertEquals($expected->getMethod(), $request->getMethod(), 'Sent request method differs from expected.');
+            $this->assertEquals($expected->getUri(), $request->getUri(), 'Sent request URI differs from expected.');
+            $this->assertEquals($expected->getHeaders(), $request->getHeaders(), 'Sent request headers differs from expected.');
+            $this->assertEquals($expected->getBody()->getContents(), $request->getBody()->getContents(), 'Sent request body differs from expected.');
 
             return $mockHandler($request, $options);
         });
@@ -104,6 +105,8 @@ class IntegrationTest extends TestCase
 
         $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json'));
         $actual = $serializer->normalize($batchResponse);
+
+//        print_r($actual);
 
         $this->assertEquals($output, $actual);
     }
@@ -123,6 +126,9 @@ class IntegrationTest extends TestCase
                             'request_options' => [
                                 'debug' => false,
                                 'allow_redirects' => false,
+                                'headers' => [
+                                    'User-Agent' => ['testing/1.0'],
+                                ],
                             ],
                         ],
                     ],
@@ -130,14 +136,21 @@ class IntegrationTest extends TestCase
 
                 'input' => [
                     'queues' => [
-                        ['uri' => 'http://example.com/ask-something', 'id' => 'ask-something'],
-                        [['uri' => 'http://example.com/do-something', 'method' => 'PUT']],
+                        [
+                            ['uri' => 'http://example.com/ask-something', 'id' => 'ask-something'],
+                            ['uri' => 'http://example.com/do-something', 'method' => 'PUT', 'data' => 'encoded_text']
+                        ],
                     ],
                 ],
 
                 'responses' => [
                     new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
                     new Response(204, ['Content-Type' => ['application/json']]),
+                ],
+
+                'sentRequests' => [
+                    new Request('GET', 'http://example.com/ask-something', ['User-Agent' => ['testing/1.0'],], ''),
+                    new Request('PUT', 'http://example.com/do-something', ['User-Agent' => ['testing/1.0'], 'Content-Length' => ['12']], 'encoded_text'),
                 ],
 
                 'output' => [
@@ -204,11 +217,11 @@ class IntegrationTest extends TestCase
                 ],
 
                 'responses' => [
-                    new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
+                    new Response(200, ['Content-Type' => ['application/json']], '{"success":true}'),
                 ],
 
                 'sentRequests' => [
-                    new Request('GET', 'http://example.com/ask-something', ['User-Agent' => ['testing/1.0'],]),
+                    new Request('GET', 'http://example.com/ask-something', ['User-Agent' => ['testing/1.0'],], ''),
                 ],
 
                 'output' => [
@@ -217,84 +230,117 @@ class IntegrationTest extends TestCase
                     'errors' => null,
                 ],
             ],
-//            [ // silent output with errors
-//                'config' => [
-//                    'domains' => ['http://example.com',],
-//                    'silent' => true,
-//                ],
-//
-//                'input' => [
-//                    'queues' => [
-//                        ['uri' => 'http://example.com/ask-something', 'id' => '#45'],
-//                        ['uri' => 'http://example.com/ask-something', 'id' => '#46'],
-//                    ],
-//                ],
-//
-//                'responses' => [
-//                    new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
-//                    new Response(500, ['Content-Type' => ['application/json']], stream_for('{"err":"server error"}')),
-//                ],
-//
-//                'output' => [
-//                    'data' => null,
-//                    'status' => 'failed',
-//                    'errors' => [
-//                        '#46' => [
-//                            'id' => '#46',
-//                            'headers' => [
-//                                [
-//                                    'name' => 'Content-Type',
-//                                    'value' => 'application/json',
-//                                ],
-//                            ],
-//                            'statusCode' => 500,
-//                            'data' => [
-//                                'err' => 'server error',
-//                            ],
-//                        ],
-//                    ],
-//                ],
-//            ],
-//            [ // partial silent output on request level
-//                'config' => [
-//                    'domains' => ['http://example.com',],
-//                    'silent' => false,
-//                ],
-//
-//                'input' => [
-//                    'queues' => [
-//                        [
-//                            ['uri' => 'http://example.com/foo', 'id' => '#45', 'config' => ['silent' => true]],
-//                            ['uri' => 'http://example.com/bar', 'id' => '#46'],
-//                        ],
-//                    ],
-//                ],
-//
-//                'responses' => [
-//                    new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
-//                    new Response(200, ['X-API' => ['123']], stream_for('{"data":"ok"}')),
-//                ],
-//
-//                'output' => [
-//                    'errors' => null,
-//                    'status' => 'ok',
-//                    'data' => [
-//                        '#46' => [
-//                            'id' => '#46',
-//                            'headers' => [
-//                                [
-//                                    'name' => 'X-API',
-//                                    'value' => '123',
-//                                ],
-//                            ],
-//                            'statusCode' => 200,
-//                            'data' => [
-//                                'data' => 'ok',
-//                            ],
-//                        ],
-//                    ],
-//                ],
-//            ],
+            [ // silent output with errors
+                'config' => [
+                    'domains' => ['http://example.com',],
+                    'silent' => true,
+                    'channels' => [
+                        'http' => [
+                            'request_options' => [
+                                'headers' => [
+                                    'User-Agent' => ['testing/1.0'],
+                                ],
+                            ]
+                        ]
+                    ],
+                    'expected_status_codes' => [200]
+                ],
+
+                'input' => [
+                    'queues' => [
+                        ['uri' => 'http://example.com/ask-something', 'id' => '#45'],
+                        ['uri' => 'http://example.com/be-something', 'id' => '#46', 'method' => 'post', 'data' => ['user' => 'john']],
+                    ],
+                ],
+
+                'responses' => [
+                    new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
+                    new Response(500, ['Content-Type' => ['application/json'],], stream_for('{"err":"server error"}')),
+                ],
+
+                'sentRequests' => [
+                    new Request('GET', 'http://example.com/ask-something', ['User-Agent' => ['testing/1.0'],], ''),
+                    new Request('POST', 'http://example.com/be-something', [
+                        'User-Agent' => ['testing/1.0'],
+                        'Content-Length' => '15',
+                        'Content-Type' => 'application/json',
+                    ], '{"user":"john"}'),
+                ],
+
+                'output' => [
+                    'data' => null,
+                    'status' => 'failed',
+                    'errors' => [
+                        '#46' => [
+                            'id' => '#46',
+                            'headers' => [
+                                [
+                                    'name' => 'Content-Type',
+                                    'value' => 'application/json',
+                                ],
+                            ],
+                            'statusCode' => 500,
+                            'data' => [
+                                'err' => 'server error',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [ // partial silent output on request level
+                'config' => [
+                    'domains' => ['http://example.com',],
+                    'silent' => false,
+                    'channels' => [
+                        'http' => [
+                            'request_options' => [
+                                'headers' => [
+                                    'User-Agent' => ['testing/1.0'],
+                                ],
+                            ]
+                        ]
+                    ],
+                ],
+
+                'input' => [
+                    'queues' => [
+                        [
+                            ['uri' => 'http://example.com/foo', 'id' => '#45', 'config' => ['silent' => true]],
+                            ['uri' => 'http://example.com/bar', 'id' => '#46'],
+                        ],
+                    ],
+                ],
+
+                'responses' => [
+                    new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
+                    new Response(200, ['X-API' => ['123']], stream_for('{"data":"ok"}')),
+                ],
+
+                'sentRequests' => [
+                    new Request('GET', 'http://example.com/foo', ['User-Agent' => ['testing/1.0'],], ''),
+                    new Request('GET', 'http://example.com/bar', ['User-Agent' => ['testing/1.0'],], ''),
+                ],
+
+                'output' => [
+                    'errors' => null,
+                    'status' => 'ok',
+                    'data' => [
+                        '#46' => [
+                            'id' => '#46',
+                            'headers' => [
+                                [
+                                    'name' => 'X-API',
+                                    'value' => '123',
+                                ],
+                            ],
+                            'statusCode' => 200,
+                            'data' => [
+                                'data' => 'ok',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ];
     }
 
