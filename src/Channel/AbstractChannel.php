@@ -28,7 +28,7 @@ abstract class AbstractChannel implements ChannelInterface
      * @param $message
      * @return $this
      */
-    protected function addError($path, $message)
+    public function addError($path, $message)
     {
         $this->errors[$path] = $message;
 
@@ -81,7 +81,7 @@ abstract class AbstractChannel implements ChannelInterface
      * @param ResponseInterface $response
      * @return $this
      */
-    protected function addFailedResponse($path, ResponseInterface $response)
+    public function addFailedResponse($path, ResponseInterface $response)
     {
         $this->failedResponses[$path] = $response;
 
@@ -94,7 +94,7 @@ abstract class AbstractChannel implements ChannelInterface
      * @param ResponseInterface $response
      * @return $this
      */
-    protected function addOkResponse($path, ResponseInterface $response)
+    public function addOkResponse($path, ResponseInterface $response)
     {
         $this->okResponses[$path] = $response;
 

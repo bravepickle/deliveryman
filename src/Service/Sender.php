@@ -101,7 +101,7 @@ class Sender
 
         $aborted = false;
         if (!$this->dispatcher) {
-            $responses = $this->dispatchSend($batchRequest, $channel, $aborted);
+            $this->dispatchSend($batchRequest, $channel, $aborted);
         } else {
             $event = (new EventSender())
                 ->setBatchRequest($batchRequest)
@@ -110,20 +110,17 @@ class Sender
             $batchRequest = $event->getBatchRequest();     // batch request can be changed
             $channel = $event->getChannel(); // client provider may be redefined on-fly
 
-            $responses = $this->dispatchSend($batchRequest, $channel, $aborted);
+            $this->dispatchSend($batchRequest, $channel, $aborted);
 
-            $event->setResponses($responses);
             $this->dispatcher->dispatch(EventSender::EVENT_SENDER_POST_SEND, $event);
-            $responses = $event->getResponses();           // responses switch
             $channel = $event->getChannel();
         }
 
-        return $this->wrapResponses($channel, $responses, $requests, $aborted);
+        return $this->wrapResponses($channel, $requests, $aborted);
     }
 
     /**
      * @param ChannelInterface $channel
-     * @param array|ResponseInterface[] $responses
      * @param array|Request[] $requests
      * @param bool $aborted
      * @return BatchResponse
@@ -131,7 +128,6 @@ class Sender
      */
     protected function wrapResponses(
         ChannelInterface $channel,
-        array $responses,
         array $requests,
         bool $aborted
     ): BatchResponse
@@ -150,17 +146,18 @@ class Sender
             }
         }
 
-        if ($responses) {
-            list($okResp, $failResp) = $this->buildResponses($responses, $requests);
+        list($okResp, $failResp) = $this->buildResponses($channel, $requests);
 
-            if ($okResp) {
-                $batchResponse->setData($okResp);
-            }
+        if ($okResp) {
+            $batchResponse->setData($okResp);
+        }
 
-            if ($failResp) {
+        if ($failResp) {
+            if (!$aborted) {
                 $batchResponse->setStatus(BatchResponse::STATUS_FAILED);
-                $batchResponse->setErrors((array)$batchResponse->getErrors() + $failResp);
             }
+            // TODO: split to different fields
+            $batchResponse->setErrors((array)$batchResponse->getErrors() + $failResp);
         }
 
         return $batchResponse;
@@ -224,19 +221,19 @@ class Sender
     }
 
     /**
-     * @param array|ResponseInterface[] $responses
+     * @param ChannelInterface $channel
      * @param array|Request[] $requests mapped requests by ids
      * @return array
      * @throws SerializationException
      */
-    protected function buildResponses(array $responses, array $requests): array
+    protected function buildResponses(ChannelInterface $channel, array $requests): array
     {
         $succeededResp = [];
         $failedResp = [];
 
         // TODO: check expected status codes and split responses to good and bad
 
-        foreach ($responses as $id => $srcResponse) {
+        foreach ($channel->getOkResponses() as $id => $srcResponse) {
             // TODO: dispatcher extend with config request resulting object
             // TODO: add headers from config
 
@@ -263,6 +260,25 @@ class Sender
             } else {
                 $failedResp[$targetResponse->getId()] = $targetResponse;
             }
+        }
+
+        foreach ($channel->getFailedResponses() as $id => $srcResponse) {
+            $requestConfig = $requests[$id]->getConfig();
+
+            $targetResponse = new Response();
+            $targetResponse->setId($id);
+            $targetResponse->setStatusCode($srcResponse->getStatusCode());
+            $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
+
+            $this->genResponseBody($requestConfig->getFormat(), $srcResponse, $targetResponse);
+
+            if ($this->dispatcher) {
+                $event = new BuildResponseEvent($targetResponse, $srcResponse, $requestConfig);
+                $this->dispatcher->dispatch(BuildResponseEvent::EVENT_FAILED_POST_BUILD, $event);
+                $targetResponse = $event->getTargetResponse();
+            }
+
+            $failedResp[$targetResponse->getId()] = $targetResponse;
         }
 
         return [$succeededResp, $failedResp];
@@ -455,7 +471,6 @@ class Sender
      * @param BatchRequest $batchRequest
      * @param ChannelInterface $channel
      * @param bool $aborted
-     * @return array|ResponseInterface[]|null
      */
     protected function dispatchSend(BatchRequest $batchRequest, ChannelInterface $channel, bool &$aborted = false)
     {
@@ -464,7 +479,5 @@ class Sender
         } catch (ChannelException $e) {
             $aborted = true;
         }
-
-        return $channel->getOkResponses();
     }
 }

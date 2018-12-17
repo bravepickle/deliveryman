@@ -16,10 +16,8 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
-use function GuzzleHttp\Psr7\stream_for;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
-use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
 use Symfony\Component\Serializer\Mapping\Loader\YamlFileLoader;
@@ -85,7 +83,7 @@ class IntegrationTest extends TestCase
 
     /**
      * @dataProvider batchRequestProvider
-     * @ dataProvider configProvider
+     * @dataProvider configProvider
      * @param array $config
      * @param array $input
      * @param array $responses

@@ -63,55 +63,47 @@ class HttpChannel extends AbstractChannel
 
     /**
      * @inheritdoc
-     * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function send(array $queues)
     {
         if ($this->hasSingleRequest($queues)) {
             $request = $this->getFirstRequest($queues);
-            $response = $this->sendRequest($request);
-
-            return $response ? [$request->getId() => $response] : [];
+            $this->sendRequest($request);
         } elseif ($this->hasSingleQueue($queues)) {
-            return $this->sendQueue($this->getFirstQueue($queues));
+            $this->sendQueue($this->getFirstQueue($queues));
         } else {
-            return $this->sendMultiQueues($queues);
+            $this->sendMultiQueues($queues);
         }
     }
 
     /**
      * Send multiple queues concurrently
      * @param array $queues
-     * @return array
      * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function sendMultiQueues(array $queues)
     {
         $client = $this->createClient();
-        $responses = [];
         $promises = [];
 
         foreach ($queues as $key => $queue) {
-            $promise = $this->chainSendRequest($queue, $client, $responses);
+            $promise = $this->chainSendRequest($queue, $client);
             if ($promise) {
                 $promises[$key] = $promise;
             }
         }
 
         Promise\settle($promises)->wait();
-
-        return $responses;
     }
 
     /**
      * Chain queue of requests
      * @param array|null $queue
      * @param Client $client
-     * @param array $responses
      * @return Promise\PromiseInterface|null
      */
-    protected function chainSendRequest(?array $queue, Client $client, array &$responses)
+    protected function chainSendRequest(?array $queue, Client $client)
     {
         if (!$queue) {
             return null;
@@ -121,11 +113,11 @@ class HttpChannel extends AbstractChannel
         $request = array_shift($queue);
         if ($request) {
             $options = $this->buildRequestOptions($request);
-            $options[RequestOptions::SYNCHRONOUS] = true;
+//            $options[RequestOptions::SYNCHRONOUS] = true;
 
             return $client->requestAsync($request->getMethod(), $request->getUri(), $options)
-                ->then($this->getChainFulfilledCallback($queue, $client, $request, $responses),
-                    $this->getChainRejectedCallback($queue, $client, $responses, $request));
+                ->then($this->getChainFulfilledCallback($queue, $client, $request),
+                    $this->getChainRejectedCallback($queue, $client, $request));
         }
 
         return null;
@@ -153,49 +145,15 @@ class HttpChannel extends AbstractChannel
     /**
      * Send request synchronously
      * @param Request $request
-     * @return mixed|\Psr\Http\Message\ResponseInterface
      * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function sendRequest(Request $request)
     {
         $options = $this->buildRequestOptions($request);
 
-        return $this->createClient()->requestAsync($request->getMethod(), $request->getUri(), $options)
-            ->then(function (ResponseInterface $response) use ($request) {
-                if (!in_array($response->getStatusCode(), $request->getConfig()->getExpectedStatusCodes()) &&
-                    in_array($request->getConfig()->getOnFail(), [
-                        RequestConfig::CONFIG_ON_FAIL_ABORT,
-                        RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE
-                    ])
-                ) {
-                    // todo: save failed objects and succeeded responses in separate data sets
-                    $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
-
-                    throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
-                        ->setRequest($request)
-                    ;
-                }
-
-            }, function (RequestException $e) use ($request) {
-                $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
-
-                switch ($request->getConfig()->getOnFail()) {
-                    case RequestConfig::CONFIG_ON_FAIL_ABORT:
-                    case RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE:
-                        throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
-                            ->setRequest($request)
-                        ;
-                        break;
-
-                    case RequestConfig::CONFIG_ON_FAIL_PROCEED:
-                        // do nothing
-                        break;
-
-                    default:
-                        throw new SendingException('Unexpected fail handler type: ' .
-                            $request->getConfig()->getOnFail());
-                }
-            })->wait();
+        $this->createClient()->requestAsync($request->getMethod(), $request->getUri(), $options)
+            ->then($this->getSendFulfilledCallback($request), $this->getSendRejectedCallback($request))
+            ->wait();
     }
 
     /**
@@ -283,13 +241,15 @@ class HttpChannel extends AbstractChannel
      * @param array|null $queue
      * @param Client $client
      * @param Request $request
-     * @param array $responses
      * @return \Closure
      */
-    protected function getChainFulfilledCallback(?array $queue, Client $client, Request $request, array &$responses): \Closure
+    protected function getChainFulfilledCallback(?array $queue, Client $client, Request $request): \Closure
     {
-        return function (ResponseInterface $response) use (&$responses, $client, $queue, $request) {
+        return function (ResponseInterface $response) use ($client, $queue, $request) {
             if (!in_array($response->getStatusCode(), $request->getConfig()->getExpectedStatusCodes())) {
+                $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
+                $this->addFailedResponse($request->getId(), $response);
+
                 switch ($request->getConfig()->getOnFail()) {
                     case RequestConfig::CONFIG_ON_FAIL_PROCEED:
                         // do nothing
@@ -309,38 +269,94 @@ class HttpChannel extends AbstractChannel
                 }
             }
 
-            $responses[$request->getId()] = $response;
-            $this->chainSendRequest($queue, $client, $responses)->wait();
+            $this->addOkResponse($request->getId(), $response);
+            $this->chainSendRequest($queue, $client)->wait();
         };
     }
 
     /**
      * @param array|null $queue
      * @param Client $client
-     * @param array $responses
      * @param Request $request
      * @return \Closure
      */
-    protected function getChainRejectedCallback(?array $queue, Client $client, array &$responses, Request $request): \Closure
+    protected function getChainRejectedCallback(?array $queue, Client $client, Request $request): \Closure
     {
-        return function (RequestException $e) use ($responses, $client, $queue, $request) {
+        return function (RequestException $e) use ($client, $queue, $request) {
             // TODO: check unexpected_status_codes if should be marked as error
             // TODO: dispatch event on fail
             $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
+            if ($e->getResponse()) {
+                $this->addFailedResponse($request->getId(), $e->getResponse());
+            }
 
             switch ($request->getConfig()->getOnFail()) {
                 case RequestConfig::CONFIG_ON_FAIL_PROCEED:
-                    $this->chainSendRequest($queue, $client, $responses)->wait();
+                    $this->chainSendRequest($queue, $client)->wait();
                     break;
 
                 case RequestConfig::CONFIG_ON_FAIL_ABORT:
                     throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
                         ->setRequest($request)
-                        ->setResponses($responses);
-                    break;
+                    ;
 
                 case RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE:
                     return; // stop chaining requests from queue
+
+                default:
+                    throw new SendingException('Unexpected fail handler type: ' .
+                        $request->getConfig()->getOnFail());
+            }
+        };
+    }
+
+    /**
+     * @param Request $request
+     * @return \Closure
+     */
+    protected function getSendFulfilledCallback(Request $request): \Closure
+    {
+        return function (ResponseInterface $response) use ($request) {
+            if (!in_array($response->getStatusCode(), $request->getConfig()->getExpectedStatusCodes()) &&
+                in_array($request->getConfig()->getOnFail(), [
+                    RequestConfig::CONFIG_ON_FAIL_ABORT,
+                    RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE
+                ])
+            ) {
+                // todo: save failed objects and succeeded responses in separate data sets
+                $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
+                $this->addFailedResponse($request->getId(), $response);
+
+                throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
+                    ->setRequest($request);
+            }
+
+            $this->addOkResponse($request->getId(), $response);
+        };
+    }
+
+    /**
+     * @param Request $request
+     * @return \Closure
+     */
+    protected function getSendRejectedCallback(Request $request): \Closure
+    {
+        return function (RequestException $e) use ($request) {
+            $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
+            if ($e->getResponse()) {
+                $this->addFailedResponse($request->getId(), $e->getResponse());
+            }
+
+            switch ($request->getConfig()->getOnFail()) {
+                case RequestConfig::CONFIG_ON_FAIL_ABORT:
+                case RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE:
+                    throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
+                        ->setRequest($request);
+                    break;
+
+                case RequestConfig::CONFIG_ON_FAIL_PROCEED:
+                    // do nothing
+                    break;
 
                 default:
                     throw new SendingException('Unexpected fail handler type: ' .

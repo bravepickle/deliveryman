@@ -51,6 +51,14 @@ interface ChannelInterface
     public function clearErrors(): void;
 
     /**
+     * Add error
+     * @param $path
+     * @param $message
+     * @return $this
+     */
+    public function addError($path, $message);
+
+    /**
      * Return all responses that considered as succeeded
      * with keys taken from request data
      * @return array|ResponseInterface[]
@@ -69,6 +77,14 @@ interface ChannelInterface
     public function clearOkResponses(): void;
 
     /**
+     * Add succeeded response
+     * @param $path
+     * @param ResponseInterface $response
+     * @return $this
+     */
+    public function addOkResponse($path, ResponseInterface $response);
+
+    /**
      * Return all errors that appeared during last session of sending data
      * with keys taken from request data
      * @return array|ResponseInterface[]
@@ -85,6 +101,14 @@ interface ChannelInterface
      * Remove all errors from list
      */
     public function clearFailedResponses(): void;
+
+    /**
+     * Add failed response
+     * @param $path
+     * @param ResponseInterface $response
+     * @return $this
+     */
+    public function addFailedResponse($path, ResponseInterface $response);
 
     /**
      * Clear all generated data: responses, errors

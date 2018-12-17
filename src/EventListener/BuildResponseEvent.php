@@ -15,6 +15,11 @@ class BuildResponseEvent extends BasicEvent
     const EVENT_POST_BUILD = 'deliveryman.response.post_build';
 
     /**
+     * Is called after return failed response was built from another
+     */
+    const EVENT_FAILED_POST_BUILD = 'deliveryman.response.failed_post_build';
+
+    /**
      * @var Response|null
      */
     protected $targetResponse;
@@ -33,6 +38,7 @@ class BuildResponseEvent extends BasicEvent
      * BuildResponseEvent constructor.
      * @param Response|null $targetResponse
      * @param ResponseInterface $sourceResponse
+     * @param RequestConfig|null $requestConfig
      */
     public function __construct(?Response $targetResponse, ?ResponseInterface $sourceResponse, ?RequestConfig $requestConfig)
     {

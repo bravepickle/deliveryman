@@ -24,11 +24,6 @@ class EventSender extends BasicEvent
     protected $batchRequest;
 
     /**
-     * @var mixed
-     */
-    protected $responses;
-
-    /**
      * @var ChannelInterface|null
      */
     protected $channel;
@@ -48,25 +43,6 @@ class EventSender extends BasicEvent
     public function setBatchRequest(?BatchRequest $batchRequest): EventSender
     {
         $this->batchRequest = $batchRequest;
-
-        return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getResponses()
-    {
-        return $this->responses;
-    }
-
-    /**
-     * @param mixed $responses
-     * @return EventSender
-     */
-    public function setResponses($responses)
-    {
-        $this->responses = $responses;
 
         return $this;
     }
