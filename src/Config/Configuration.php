@@ -34,7 +34,10 @@ class Configuration implements ConfigurationInterface
                 ->info('List of communication channels with their custom settings.')
                 ->example(['http' => ['debug' => true, 'timeout' => 30, 'allow_redirects' => false]])
                 ->defaultValue([
+                    // TODO: how to specify optional http channel config format optionally using TreeBuilder? Dependency injection?
+                    // TODO: group channel entities as module and put to same parent folder
                     'http' => [
+                        // Guzzle's request options passed to Client object
                         'request_options' => [
                             'allow_redirects' => false,
                             'connect_timeout' => 10,
@@ -43,9 +46,12 @@ class Configuration implements ConfigurationInterface
                         ],
                     ],
                 ])
+
                 ->arrayPrototype()->ignoreExtraKeys(false)->end()
             ->end()
 
+            // TODO: use snake_case instead of camelCase in configs
+            // TODO: move to channel config and add validator for those values to be used properly
             ->arrayNode('domains')
                 ->requiresAtLeastOneElement()
                 ->isRequired()
@@ -70,18 +76,7 @@ class Configuration implements ConfigurationInterface
                 ->scalarPrototype()->end()
             ->end()
 
-            ->arrayNode('headers')
-                ->example([['name' => 'Content-Type', 'value' => 'application/json']])
-                ->defaultValue([])
-                ->arrayPrototype()
-                    ->children()
-                        ->scalarNode('name')->cannotBeEmpty()->end()
-                        ->scalarNode('value')->end()
-                    ->end()
-                ->end()
-            ->end()
-
-            ->enumNode('batchFormat')
+            ->enumNode('batch_format')
                 ->values(['json', 'text', 'binary'])
                 ->info('Input and output format for batch requests processing. ' .
                     'Options: json - will try to convert target response bodies to arrays, if formats match; ' .
@@ -91,14 +86,15 @@ class Configuration implements ConfigurationInterface
                 ->defaultValue('json')
             ->end()
 
+            // TODO: move channel-related configs inside channel instance description
             // TODO: we need to specify input and output formats for third party resources. Input should support form-data
-            ->enumNode('resourceFormat')
+            ->enumNode('resource_format')
                 ->values(['json', 'text', 'binary'])
                 ->info('The format of returned data from requested resources by default.')
                 ->defaultValue('json')
             ->end()
 
-            ->enumNode('onFail')
+            ->enumNode('on_fail')
                 ->values(['abort', 'proceed', 'abort-queue'])
                 ->info('Select strategy on how to treat requests batch if one of them failed. ' .
                     'Options: abort - terminate execution of all not finished requests and return error; ' .
@@ -108,7 +104,7 @@ class Configuration implements ConfigurationInterface
                 ->defaultValue('abort')
             ->end()
 
-            ->enumNode('configMerge')
+            ->enumNode('config_merge')
                 ->values(['first', 'unique', 'ignore'])
                 ->info('Configs merge strategy specified in application and batch request (global scope, request level). ' .
                     'Options: first - select configuration specified closest to given request; ' .
@@ -119,7 +115,7 @@ class Configuration implements ConfigurationInterface
                 ->defaultValue('first')
             ->end()
 
-            ->arrayNode('expectedStatusCodes')
+            ->arrayNode('expected_status_codes')
                 ->info('List of all status codes that are considered OK, if returned. ' .
                     'If any other status codes received by requests, then request is considered as failed.')
                 ->example([200, 422, 400])
@@ -128,6 +124,7 @@ class Configuration implements ConfigurationInterface
                 ->scalarPrototype()->end()
             ->end()
 
+            // TODO: move to channel
             ->arrayNode('methods')
                 ->info('Allowed methods for requests to send.')
                 ->example(['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'])
@@ -142,7 +139,8 @@ class Configuration implements ConfigurationInterface
                 ->defaultValue(false)
             ->end()
 
-            ->booleanNode('forwardMasterHeaders')
+            // TODO: move to channel
+            ->booleanNode('forward_master_headers')
                 ->info('Pass all initial headers sent from client to batched requests. Headers are merged with ' .
                     'the rest specified bin batch request body.')
                 ->defaultValue(true)

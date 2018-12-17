@@ -33,18 +33,19 @@ class BatchRequestNormalizerTest extends TestCase
     /**
      * Test if normalizer can parse data from array
      * @dataProvider basicProvider
-     * @param array $data
+     * @param array $input
+     * @param array $expected
      */
-    public function testBasic(array $data)
+    public function testBasic(array $input, array $expected)
     {
         $serializer = $this->buildSerializer();
-        $this->assertTrue($serializer->supportsDenormalization($data['input'], BatchRequest::class));
+        $this->assertTrue($serializer->supportsDenormalization($input, BatchRequest::class));
 
-        $object = $serializer->denormalize($data['input'], BatchRequest::class);
+        $object = $serializer->denormalize($input, BatchRequest::class);
         $this->assertEquals(BatchRequest::class, get_class($object), 'Return object class name must match expected one');
 
         $actual = $serializer->normalize($object);
-        $this->assertEquals($data['expected'], $actual, 'Data denormalization differs from expected');
+        $this->assertEquals($expected, $actual, 'Data denormalization differs from expected');
     }
 
     /**
@@ -54,130 +55,114 @@ class BatchRequestNormalizerTest extends TestCase
     {
         return [
             [
-                [
-                    'input' => [
-                        'config' => [
-                            'silent' => true,
-                        ],
+                'input' => [
+                    'config' => [
+                        'silent' => true,
                     ],
-                    'expected' => [
-                        'config' => [
-                            'silent' => true,
-                            'headers' => null,
-                            'configMerge' => null,
-                            'onFail' => null,
-                            'expectedStatusCodes' => null,
-                            'format' => null,
-                        ],
-                        'queues' => null,
+                ],
+                'expected' => [
+                    'config' => [
+                        'silent' => true,
+                        'configMerge' => null,
+                        'onFail' => null,
+                        'expectedStatusCodes' => null,
+                        'format' => null,
+                        'channel' => null,
                     ],
+                    'queues' => null,
                 ],
             ],
             [
-                [
-                    'input' => [
-                        'config' => [
-                            'silent' => false,
-                            'configMerge' => 'first',
-                            'onFail' => 'proceed',
-                            'expectedStatusCodes' => 200,
-                            'headers' => [
-                                ['name' => 'Content-Type', 'value' => 'application/json'],
-                            ],
-                        ],
+                'input' => [
+                    'config' => [
+                        'silent' => false,
+                        'configMerge' => 'first',
+                        'onFail' => 'proceed',
+                        'expectedStatusCodes' => 200,
                     ],
-                    'expected' => [
-                        'config' => [
-                            'silent' => false,
-                            'headers' => [
-                                ['name' => 'Content-Type', 'value' => 'application/json'],
-                            ],
-                            'configMerge' => 'first',
-                            'onFail' => 'proceed',
-                            'expectedStatusCodes' => [200],
-                            'format' => null,
-                        ],
-                        'queues' => null,
+                ],
+                'expected' => [
+                    'config' => [
+                        'silent' => false,
+                        'configMerge' => 'first',
+                        'onFail' => 'proceed',
+                        'expectedStatusCodes' => [200],
+                        'format' => null,
+                        'channel' => null,
                     ],
+                    'queues' => null,
                 ],
             ],
             [
-                [
-                    'input' => [
-                        'queues' => [
-                            [ // queue #1
-                                [ // request #1
-                                    'id' => 'read_book',
-                                    'uri' => 'http://example.com/books/1',
-                                    'method' => 'GET',
-                                    'config' => [
-                                        'onFail' => 'abort',
-                                        'headers' => [
-                                            ['name' => 'Accept-Language', 'value' => 'en_US'],
-                                        ],
-                                        'configMerge' => 'unique',
-                                        'expectedStatusCodes' => [200, 404],
-                                    ],
-                                    'headers' => [
-                                        ['name' => 'Origin', 'value' => 'http://admin-panel.example.com'],
-                                    ],
-                                    'query' => [
-                                        'fields' => ['id', 'title'],
-                                        'include' => 'author',
-                                    ],
+                'input' => [
+                    'queues' => [
+                        [ // queue #1
+                            [ // request #1
+                                'id' => 'read_book',
+                                'uri' => 'http://example.com/books/1',
+                                'method' => 'GET',
+                                'config' => [
+                                    'onFail' => 'abort',
+                                    'configMerge' => 'unique',
+                                    'expectedStatusCodes' => [200, 404],
+                                ],
+                                'headers' => [
+                                    ['name' => 'Origin', 'value' => 'http://admin-panel.example.com'],
+                                ],
+                                'query' => [
+                                    'fields' => ['id', 'title'],
+                                    'include' => 'author',
                                 ],
                             ],
-                            [ // queue #2 with single POST request
+                        ],
+                        [ // queue #2 with single POST request
+                            'id' => 'create_author',
+                            'uri' => 'http://example.com/authors?fields=id',
+                            'method' => 'POST',
+                            'data' => [
+                                'firstname' => 'John',
+                                'lastname' => 'Doe',
+                            ],
+                        ],
+                    ],
+                ],
+                'expected' => [
+                    'config' => null,
+                    'queues' => [
+                        [
+                            [
+                                'id' => 'read_book',
+                                'uri' => 'http://example.com/books/1',
+                                'method' => 'GET',
+                                'config' => [
+                                    'onFail' => 'abort',
+                                    'configMerge' => 'unique',
+                                    'expectedStatusCodes' => [200, 404],
+                                    'silent' => null,
+                                    'format' => null,
+                                    'channel' => null,
+                                ],
+                                'headers' => [
+                                    ['name' => 'Origin', 'value' => 'http://admin-panel.example.com'],
+                                ],
+                                'query' => [
+                                    'fields' => ['id', 'title'],
+                                    'include' => 'author',
+                                ],
+                                'data' => null,
+                            ],
+                        ],
+                        [
+                            [
                                 'id' => 'create_author',
                                 'uri' => 'http://example.com/authors?fields=id',
                                 'method' => 'POST',
+                                'config' => null,
+                                'headers' => null,
+                                'query' => null,
                                 'data' => [
                                     'firstname' => 'John',
                                     'lastname' => 'Doe',
-                                ],
-                            ],
-                        ],
-                    ],
-                    'expected' => [
-                        'config' => null,
-                        'queues' => [
-                            [
-                                [
-                                    'id' => 'read_book',
-                                    'uri' => 'http://example.com/books/1',
-                                    'method' => 'GET',
-                                    'config' => [
-                                        'onFail' => 'abort',
-                                        'headers' => [
-                                            ['name' => 'Accept-Language', 'value' => 'en_US'],
-                                        ],
-                                        'configMerge' => 'unique',
-                                        'expectedStatusCodes' => [200, 404],
-                                        'silent' => null,
-                                        'format' => null,
-                                    ],
-                                    'headers' => [
-                                        ['name' => 'Origin', 'value' => 'http://admin-panel.example.com'],
-                                    ],
-                                    'query' => [
-                                        'fields' => ['id', 'title'],
-                                        'include' => 'author',
-                                    ],
-                                    'data' => null,
-                                ],
-                            ],
-                            [
-                                [
-                                    'id' => 'create_author',
-                                    'uri' => 'http://example.com/authors?fields=id',
-                                    'method' => 'POST',
-                                    'config' => null,
-                                    'headers' => null,
-                                    'query' => null,
-                                    'data' => [
-                                        'firstname' => 'John',
-                                        'lastname' => 'Doe',
-                                    ],
                                 ],
                             ],
                         ],

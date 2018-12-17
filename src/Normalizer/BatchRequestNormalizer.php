@@ -130,10 +130,6 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
         );
         $object->setSilent($data['silent'] ?? null);
 
-        if (!empty($data['headers'])) {
-            $object->setHeaders($this->denoramlizeHeaders($data['headers'], RequestHeader::class, $format, $context));
-        }
-
         return $object;
     }
 

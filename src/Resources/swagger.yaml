@@ -74,7 +74,7 @@ components:
                     items:
                         $ref: '#/components/schemas/RequestHeader'
                     default: []
-                configMerge:
+                config_merge:
                     type: string
                     description: Configs merge strategy per request
                     default: first
@@ -82,7 +82,7 @@ components:
                         - first
                         - unique
                         - ignore
-                onFail:
+                on_fail:
                     type: string
                     description: Strategy on handling failed requests
                     default: abort
@@ -90,7 +90,7 @@ components:
                         - abort
                         - proceed
                         - abort-sequence
-                expectedStatusCodes:
+                expected_status_codes:
                     type: array
                     description: >-
                         List of all status codes that are considered OK, if returned. If any

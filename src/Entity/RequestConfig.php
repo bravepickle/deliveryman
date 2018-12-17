@@ -16,12 +16,6 @@ class RequestConfig implements NormalizableInterface
     const CONFIG_ON_FAIL_ABORT_QUEUE = 'abort-queue';
 
     /**
-     * List of requests to send together with request
-     * @var RequestHeader[]|null|array
-     */
-    protected $headers;
-
-    /**
      * Configs merge strategy per request
      * @var string|null
      */
@@ -34,6 +28,7 @@ class RequestConfig implements NormalizableInterface
     protected $onFail;
 
     /**
+     * TODO: move to channel request-config
      * @var array|null
      */
     protected $expectedStatusCodes;
@@ -49,23 +44,9 @@ class RequestConfig implements NormalizableInterface
     protected $format;
 
     /**
-     * @return RequestHeader[]|null|array
+     * @var mixed channel-related configuration
      */
-    public function getHeaders(): ?array
-    {
-        return $this->headers;
-    }
-
-    /**
-     * @param RequestHeader[]|null|array $headers
-     * @return RequestConfig
-     */
-    public function setHeaders(?array $headers): RequestConfig
-    {
-        $this->headers = $headers;
-
-        return $this;
-    }
+    protected $channel;
 
     /**
      * @return string|null
@@ -158,6 +139,25 @@ class RequestConfig implements NormalizableInterface
     public function setFormat(?string $format): RequestConfig
     {
         $this->format = $format;
+
+        return $this;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getChannel()
+    {
+        return $this->channel;
+    }
+
+    /**
+     * @param mixed $channel
+     * @return RequestConfig
+     */
+    public function setChannel($channel)
+    {
+        $this->channel = $channel;
 
         return $this;
     }

@@ -19,6 +19,8 @@ Deliveryman\Entity\RequestConfig:
             type: array
         silent:
             type: boolean
+        channel:
+            type: array
 
 Deliveryman\Entity\RequestHeader:
     attributes:

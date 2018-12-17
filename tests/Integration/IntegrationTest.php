@@ -14,9 +14,11 @@ use Deliveryman\Service\ConfigManager;
 use Deliveryman\Service\Sender;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use function GuzzleHttp\Psr7\stream_for;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\RequestInterface;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
 use Symfony\Component\Serializer\Mapping\Loader\YamlFileLoader;
@@ -63,14 +65,34 @@ class IntegrationTest extends TestCase
      * @param array $config
      * @param array $input
      * @param array $responses
+     * @param RequestInterface[]|array $expectedRequests
      * @param array $output
      * @throws \Deliveryman\Exception\SendingException
      * @throws \Deliveryman\Exception\SerializationException
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    public function testBatchRequest(array $config, array $input, array $responses, array $output)
-    {
-        $config['channels']['http']['request_options']['handler'] = HandlerStack::create(new MockHandler($responses));
+    public function testBatchRequest(
+        array $config,
+        array $input,
+        array $responses,
+        array $expectedRequests,
+        array $output
+    ) {
+        $mockHandler = new MockHandler($responses);
+        $config['channels']['http']['request_options']['handler'] = HandlerStack::create(function (
+            RequestInterface $request,
+            array $options
+        ) use ($mockHandler, &$expectedRequests) {
+            $expected = array_shift($expectedRequests);
+//            var_dump($expected);
+//            var_dump((string)$request->getBody());
+//
+//            die("\n" . __METHOD__ . ':' . __FILE__ . ':' . __LINE__ . "\n");
+
+            $this->assertEquals($expected, $request, 'Sent request data differs from expected.');
+
+            return $mockHandler($request, $options);
+        });
         $sender = $this->initSender($config);
         $serializer = $this->initSerializer();
 
@@ -102,8 +124,8 @@ class IntegrationTest extends TestCase
                                 'debug' => false,
                                 'allow_redirects' => false,
                             ],
-                        ]
-                    ]
+                        ],
+                    ],
                 ],
 
                 'input' => [
@@ -143,11 +165,11 @@ class IntegrationTest extends TestCase
                                 ],
                             ],
                             'statusCode' => 204,
-                            'data' => NULL,
+                            'data' => null,
                         ],
                     ],
                     'status' => 'ok',
-                    'errors' => NULL,
+                    'errors' => null,
                 ],
             ],
         ];
@@ -164,6 +186,15 @@ class IntegrationTest extends TestCase
                 'config' => [
                     'domains' => ['http://example.com',],
                     'silent' => true,
+                    'channels' => [
+                        'http' => [
+                            'request_options' => [
+                                'headers' => [
+                                    'User-Agent' => ['testing/1.0'],
+                                ],
+                            ]
+                        ]
+                    ]
                 ],
 
                 'input' => [
@@ -174,92 +205,96 @@ class IntegrationTest extends TestCase
 
                 'responses' => [
                     new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
+                ],
+
+                'sentRequests' => [
+                    new Request('GET', 'http://example.com/ask-something', ['User-Agent' => ['testing/1.0'],]),
                 ],
 
                 'output' => [
                     'data' => null,
                     'status' => 'ok',
-                    'errors' => NULL,
+                    'errors' => null,
                 ],
             ],
-            [ // silent output with errors
-                'config' => [
-                    'domains' => ['http://example.com',],
-                    'silent' => true,
-                ],
-
-                'input' => [
-                    'queues' => [
-                        ['uri' => 'http://example.com/ask-something', 'id' => '#45'],
-                        ['uri' => 'http://example.com/ask-something', 'id' => '#46'],
-                    ],
-                ],
-
-                'responses' => [
-                    new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
-                    new Response(500, ['Content-Type' => ['application/json']], stream_for('{"err":"server error"}')),
-                ],
-
-                'output' => [
-                    'data' => NULL,
-                    'status' => 'failed',
-                    'errors' => [
-                        '#46' =>  [
-                            'id' => '#46',
-                            'headers' => [
-                                [
-                                    'name' => 'Content-Type',
-                                    'value' => 'application/json',
-                                ],
-                            ],
-                            'statusCode' => 500,
-                            'data' => [
-                                'err' => 'server error',
-                            ],
-                        ],
-                    ],
-                ],
-            ],
-            [ // partial silent output on request level
-                'config' => [
-                    'domains' => ['http://example.com',],
-                    'silent' => false,
-                ],
-
-                'input' => [
-                    'queues' => [
-                        [
-                            ['uri' => 'http://example.com/foo', 'id' => '#45', 'config' => ['silent' => true]],
-                            ['uri' => 'http://example.com/bar', 'id' => '#46'],
-                        ]
-                    ],
-                ],
-
-                'responses' => [
-                    new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
-                    new Response(200, ['X-API' => ['123']], stream_for('{"data":"ok"}')),
-                ],
-
-                'output' => [
-                    'errors' => NULL,
-                    'status' => 'ok',
-                    'data' => [
-                        '#46' =>  [
-                            'id' => '#46',
-                            'headers' => [
-                                [
-                                    'name' => 'X-API',
-                                    'value' => '123',
-                                ],
-                            ],
-                            'statusCode' => 200,
-                            'data' => [
-                                'data' => 'ok',
-                            ],
-                        ],
-                    ],
-                ],
-            ],
+//            [ // silent output with errors
+//                'config' => [
+//                    'domains' => ['http://example.com',],
+//                    'silent' => true,
+//                ],
+//
+//                'input' => [
+//                    'queues' => [
+//                        ['uri' => 'http://example.com/ask-something', 'id' => '#45'],
+//                        ['uri' => 'http://example.com/ask-something', 'id' => '#46'],
+//                    ],
+//                ],
+//
+//                'responses' => [
+//                    new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
+//                    new Response(500, ['Content-Type' => ['application/json']], stream_for('{"err":"server error"}')),
+//                ],
+//
+//                'output' => [
+//                    'data' => null,
+//                    'status' => 'failed',
+//                    'errors' => [
+//                        '#46' => [
+//                            'id' => '#46',
+//                            'headers' => [
+//                                [
+//                                    'name' => 'Content-Type',
+//                                    'value' => 'application/json',
+//                                ],
+//                            ],
+//                            'statusCode' => 500,
+//                            'data' => [
+//                                'err' => 'server error',
+//                            ],
+//                        ],
+//                    ],
+//                ],
+//            ],
+//            [ // partial silent output on request level
+//                'config' => [
+//                    'domains' => ['http://example.com',],
+//                    'silent' => false,
+//                ],
+//
+//                'input' => [
+//                    'queues' => [
+//                        [
+//                            ['uri' => 'http://example.com/foo', 'id' => '#45', 'config' => ['silent' => true]],
+//                            ['uri' => 'http://example.com/bar', 'id' => '#46'],
+//                        ],
+//                    ],
+//                ],
+//
+//                'responses' => [
+//                    new Response(200, ['Content-Type' => ['application/json']], stream_for('{"success":true}')),
+//                    new Response(200, ['X-API' => ['123']], stream_for('{"data":"ok"}')),
+//                ],
+//
+//                'output' => [
+//                    'errors' => null,
+//                    'status' => 'ok',
+//                    'data' => [
+//                        '#46' => [
+//                            'id' => '#46',
+//                            'headers' => [
+//                                [
+//                                    'name' => 'X-API',
+//                                    'value' => '123',
+//                                ],
+//                            ],
+//                            'statusCode' => 200,
+//                            'data' => [
+//                                'data' => 'ok',
+//                            ],
+//                        ],
+//                    ],
+//                ],
+//            ],
         ];
     }
 

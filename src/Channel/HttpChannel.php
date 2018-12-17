@@ -49,11 +49,6 @@ class HttpChannel extends AbstractChannel
         // never allow throwing exceptions. Statuses should be handled elsewhere
         $options[RequestOptions::HTTP_ERRORS] = false;
 
-        // append headers from app config to channel config
-        foreach ($appConfig['headers'] as $header) {
-            $options[RequestOptions::HEADERS][$header['name']] = $header['value'];
-        }
-
         return new Client($options);
     }
 
@@ -139,7 +134,7 @@ class HttpChannel extends AbstractChannel
 
                     print_r($response);
                 }, function (RequestException $e) use ($responses, $client, $queue, $request) {
-                    // TODO: check unexpectedStatusCodes if should be marked as error
+                    // TODO: check unexpected_status_codes if should be marked as error
                     // TODO: dispatch event on fail
                     $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
 

@@ -29,17 +29,11 @@ class ConfigurationTest extends TestCase
         $config = $processor->processConfiguration($definition, [
             'deliveryman' => [
                 'domains' => ['example.com'],
-                'headers' => [
-                    ['name' => 'Accept-Language', 'value' => 'en_US'],
-                ],
             ],
         ]);
 
         $this->assertEquals($config, [
             'domains' => ['example.com',],
-            'headers' => [
-                ['name' => 'Accept-Language', 'value' => 'en_US'],
-            ],
             'channels' => [
                 'http' => [
                     'request_options' => [
@@ -50,14 +44,14 @@ class ConfigurationTest extends TestCase
                     ],
                 ],
             ],
-            'batchFormat' => 'json',
-            'resourceFormat' => 'json',
-            'onFail' => 'abort',
-            'configMerge' => 'first',
-            'expectedStatusCodes' => [200, 201, 202, 204],
+            'batch_format' => 'json',
+            'resource_format' => 'json',
+            'on_fail' => 'abort',
+            'config_merge' => 'first',
+            'expected_status_codes' => [200, 201, 202, 204],
             'methods' => ['GET', 'POST'],
             'silent' => false,
-            'forwardMasterHeaders' => true,
+            'forward_master_headers' => true,
         ]);
     }
 
@@ -96,15 +90,14 @@ class ConfigurationTest extends TestCase
                     ],
                 ],
             ],
-            'headers' => [],
-            'batchFormat' => 'json',
-            'resourceFormat' => 'json',
-            'onFail' => 'abort',
-            'configMerge' => 'first',
-            'expectedStatusCodes' => [200, 201, 202, 204],
+            'batch_format' => 'json',
+            'resource_format' => 'json',
+            'on_fail' => 'abort',
+            'config_merge' => 'first',
+            'expected_status_codes' => [200, 201, 202, 204],
             'methods' => ['GET', 'POST'],
             'silent' => false,
-            'forwardMasterHeaders' => true,
+            'forward_master_headers' => true,
         ]);
     }
 
