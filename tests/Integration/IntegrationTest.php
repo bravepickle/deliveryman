@@ -131,6 +131,54 @@ class IntegrationTest extends TestCase
     }
 
     /**
+     * @dataProvider clientRequestProvider
+     * @param array $config
+     * @param array $input
+     * @param array $responses
+     * @param RequestInterface[]|array $expectedRequests
+     * @param array $output
+     * @throws \Deliveryman\Exception\SendingException
+     * @throws \Deliveryman\Exception\SerializationException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function testClientRequest(
+        array $config,
+        array $input,
+        array $responses,
+        array $expectedRequests,
+        array $output
+    )
+    {
+        $mockHandler = new MockHandler($responses);
+        $config['channels']['http']['request_options']['handler'] = HandlerStack::create(function (
+            RequestInterface $request,
+            array $options
+        ) use ($mockHandler, &$expectedRequests) {
+            $expected = array_shift($expectedRequests);
+
+            $this->assertEquals($expected->getMethod(), $request->getMethod(), 'Sent request method differs from expected.');
+            $this->assertEquals($expected->getUri(), $request->getUri(), 'Sent request URI differs from expected.');
+            $this->assertEquals($expected->getHeaders(), $request->getHeaders(), 'Sent request headers differs from expected.');
+            $this->assertEquals($expected->getBody()->getContents(), $request->getBody()->getContents(), 'Sent request body differs from expected.');
+
+            return $mockHandler($request, $options);
+        });
+        $sender = $this->initSender($config);
+        $serializer = $this->initSerializer();
+
+        $this->assertTrue($serializer->supportsDenormalization($input, BatchRequest::class));
+
+        /** @var BatchRequest $batchRequest */
+        $batchRequest = $serializer->denormalize($input, BatchRequest::class);
+        $batchResponse = $sender->send($batchRequest);
+
+        $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json'));
+        $actual = $serializer->normalize($batchResponse);
+
+        $this->assertEquals($output, $actual);
+    }
+
+    /**
      * Requests testing
      * @return array
      */
@@ -144,6 +192,15 @@ class IntegrationTest extends TestCase
      * @return array
      */
     public function configProvider()
+    {
+        return $this->prepareProviderData(self::getFixtures(__FUNCTION__));
+    }
+
+    /**
+     * Configs usage testing in requests
+     * @return array
+     */
+    public function clientRequestProvider()
     {
         return $this->prepareProviderData(self::getFixtures(__FUNCTION__));
     }

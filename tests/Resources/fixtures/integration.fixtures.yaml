@@ -202,3 +202,47 @@ configProvider:
                     headers: [{ name: Content-Type, value: 'application/json' }]
                     statusCode: 401
                     data: { error: Unauthorized }
+
+clientRequestProvider:
+    -   config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+                    sender_headers:
+                        - x-foo
+                    receiver_headers:
+                        - X-Status
+
+        input:
+            headers:
+                - { name: 'X-Bar', value: 'unused header' }
+                - { name: 'X-Foo', value: 'jeronimo' }
+            queues:
+                - { uri: 'http://example.com/user', id: 'user', headers: [{ name: 'X-Auth', value: 'secured_key' }]}
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                    X-Status: [accepted]
+                    X-CSRF: [abdef]
+                data: 'John Doe found!'
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/user'
+                headers:
+                    User-Agent: [testing/1.0]
+                    X-Auth: [secured_key]
+                    X-Foo: [jeronimo]
+        output:
+            failed: null
+            status: aborted
+            errors:
+                leslie: 'Request failed to complete.'
+            data:
+                leslie:
+                    id: 'leslie'
+                    headers: [{ name: X-Status, value: 'accepted' }]
+                    statusCode: 200
+                    data: { error: Unauthorized }
