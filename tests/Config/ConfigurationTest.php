@@ -32,7 +32,7 @@ class ConfigurationTest extends TestCase
             ],
         ]);
 
-        $this->assertEquals($config, [
+        $this->assertEquals([
             'domains' => ['example.com',],
             'channels' => [
                 'http' => [
@@ -52,7 +52,7 @@ class ConfigurationTest extends TestCase
             'methods' => ['GET', 'POST'],
             'silent' => false,
             'forward_master_headers' => true,
-        ]);
+        ], $config);
     }
 
     /**
@@ -75,10 +75,12 @@ class ConfigurationTest extends TestCase
         $definition = new Configuration();
         $processor = new Processor();
         $config = $processor->processConfiguration($definition, [
-            'deliveryman' => ['domains' => ['example.com']],
+            'deliveryman' => [
+                'domains' => ['example.com'],
+            ],
         ]);
 
-        $this->assertEquals($config, [
+        $this->assertEquals([
             'domains' => ['example.com',],
             'channels' => [
                 'http' => [
@@ -98,7 +100,7 @@ class ConfigurationTest extends TestCase
             'methods' => ['GET', 'POST'],
             'silent' => false,
             'forward_master_headers' => true,
-        ]);
+        ], $config);
     }
 
     /**
