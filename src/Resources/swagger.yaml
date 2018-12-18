@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
     description: >
-        Documenation for *Deliveryman* library at
+        Documentation for *Deliveryman* library at
         [https://github.com/bravepickle/deliveryman](https://github.com/bravepickle/deliveryman).
     version: "1.0.0-oas3"
     title: Deliveryman API
@@ -21,6 +21,10 @@ paths:
             responses:
                 '200':
                     description: Successfully completed
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BatchResponse'
                 '400':
                     description: Invalid input
                     content:
@@ -65,6 +69,25 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Queue'
+        BatchResponse:
+            type: object
+            description: Batch response body
+            properties:
+                status:
+                    type: string
+                    description: 'Result status code: ok, aborted, failed.'
+                data:
+                    type: array
+                    description: 'Return responses that succeeded.'
+                    items:
+                        $ref: '#/components/schemas/Response'
+                errors:
+                    type: object
+                    additionalProperties: true
+                failed:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Response'
         RequestConfig:
             type: object
             properties:
@@ -149,6 +172,10 @@ components:
             type: object
             description: Data specified in body of request
             additionalProperties: true
+        ResponseData:
+            type: object
+            description: Data specified in body of response
+            additionalProperties: true
         RequestHeader:
             type: object
             description: Request HTTP headers to send to request
@@ -159,3 +186,17 @@ components:
                 value:
                     type: string
                     description: Value of the HTTP request header
+        Response:
+            type: object
+            description: Response data returned by request from queues.
+            properties:
+                id:
+                    type: string
+                    description: Identifier for initial request
+                headers:
+                    type: array
+                    description: List of returned headers
+                    items:
+                        $ref: '#/components/schemas/RequestHeader'
+                data:
+                    $ref: '#/components/schemas/ResponseData'
