@@ -238,6 +238,34 @@ class HttpChannel extends AbstractChannel
     }
 
     /**
+     * @param Request $request
+     * @return array
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function getExpectedStatusCodesWithFallback(Request $request)
+    {
+        if ($request && $request->getConfig() && $request->getConfig()->getExpectedStatusCodes()) {
+            return (array)$request->getConfig()->getExpectedStatusCodes();
+        }
+
+        return $this->getMasterConfig()['expected_status_codes'] ?? []; // fallback
+    }
+
+    /**
+     * @param Request $request
+     * @return string|null
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function getOnFailWithFallback(Request $request)
+    {
+        if ($request && $request->getConfig() && $request->getConfig()->getOnFail()) {
+            return $request->getConfig()->getOnFail();
+        }
+
+        return $this->getMasterConfig()['on_fail']; // fallback
+    }
+
+    /**
      * @param array|null $queue
      * @param Client $client
      * @param Request $request
@@ -246,7 +274,7 @@ class HttpChannel extends AbstractChannel
     protected function getChainFulfilledCallback(?array $queue, Client $client, Request $request): \Closure
     {
         return function (ResponseInterface $response) use ($client, $queue, $request) {
-            if (!in_array($response->getStatusCode(), $request->getConfig()->getExpectedStatusCodes())) {
+            if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request))) {
                 $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
                 $this->addFailedResponse($request->getId(), $response);
 
@@ -317,8 +345,8 @@ class HttpChannel extends AbstractChannel
     protected function getSendFulfilledCallback(Request $request): \Closure
     {
         return function (ResponseInterface $response) use ($request) {
-            if (!in_array($response->getStatusCode(), $request->getConfig()->getExpectedStatusCodes()) &&
-                in_array($request->getConfig()->getOnFail(), [
+            if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request)) &&
+                in_array($this->getOnFailWithFallback($request), [
                     RequestConfig::CONFIG_ON_FAIL_ABORT,
                     RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE
                 ])
@@ -347,7 +375,7 @@ class HttpChannel extends AbstractChannel
                 $this->addFailedResponse($request->getId(), $e->getResponse());
             }
 
-            switch ($request->getConfig()->getOnFail()) {
+            switch ($this->getOnFailWithFallback($request)) {
                 case RequestConfig::CONFIG_ON_FAIL_ABORT:
                 case RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE:
                     throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
@@ -360,7 +388,7 @@ class HttpChannel extends AbstractChannel
 
                 default:
                     throw new SendingException('Unexpected fail handler type: ' .
-                        $request->getConfig()->getOnFail());
+                        $this->getOnFailWithFallback($request));
             }
         };
     }

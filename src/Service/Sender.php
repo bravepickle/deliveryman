@@ -132,6 +132,8 @@ class Sender
         bool $aborted
     ): BatchResponse
     {
+        list($okResp, $failResp) = $this->buildResponses($channel, $requests);
+
         $batchResponse = new BatchResponse();
         if ($aborted) {
             $batchResponse->setStatus(BatchResponse::STATUS_ABORTED);
@@ -146,8 +148,6 @@ class Sender
             }
         }
 
-        list($okResp, $failResp) = $this->buildResponses($channel, $requests);
-
         if ($okResp) {
             $batchResponse->setData($okResp);
         }
@@ -156,8 +156,7 @@ class Sender
             if (!$aborted) {
                 $batchResponse->setStatus(BatchResponse::STATUS_FAILED);
             }
-            // TODO: split to different fields
-            $batchResponse->setErrors((array)$batchResponse->getErrors() + $failResp);
+            $batchResponse->setFailed($failResp);
         }
 
         return $batchResponse;
@@ -214,7 +213,7 @@ class Sender
         /** @var Request $request */
         foreach ($requestsMap as $id => $request) {
             // update config with merged one
-            $map[$id] = clone $request->setConfig($this->buildRequestConfig($request, $batchRequest, $appConfig));
+            $map[$id] = $request->setConfig($this->buildRequestConfig($request, $batchRequest, $appConfig));
         }
 
         return $map;
@@ -379,30 +378,55 @@ class Sender
      * @param RequestConfig|null $requestCfg
      * @param RequestConfig|null $generalCfg
      * @param array $appConfig
+     * @throws SerializationException
      */
     protected function mergeExpectedStatusCodes(RequestConfig $newConfig, ?RequestConfig $requestCfg, ?RequestConfig $generalCfg, array $appConfig): void
     {
         // TODO: set status codes from app config if not set here
+        // TODO: merge strategy should be used to define how to merge
 
-        $reqExpectedStatusCodes = $requestCfg && $requestCfg->getExpectedStatusCodes() ?
-            $requestCfg->getExpectedStatusCodes() : [];
-        $genExpectedStatusCodes = $generalCfg && $generalCfg->getExpectedStatusCodes() ?
-            $generalCfg->getExpectedStatusCodes() : [];
+        switch($newConfig->getConfigMerge()) {
+            case RequestConfig::CONFIG_MERGE_IGNORE:
+                $newConfig->setExpectedStatusCodes($appConfig['expected_status_codes']);
+                break;
+            case RequestConfig::CONFIG_MERGE_FIRST:
+                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
+                    $newConfig->setExpectedStatusCodes($requestCfg->getExpectedStatusCodes());
+                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
+                    $newConfig->setExpectedStatusCodes($generalCfg->getExpectedStatusCodes());
+                } else {
+                    $newConfig->setExpectedStatusCodes($appConfig['expected_status_codes']);
+                }
+                break;
+            case RequestConfig::CONFIG_MERGE_UNIQUE:
+                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
+                    if ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
+                        $newConfig->setExpectedStatusCodes(array_merge(
+                            $requestCfg->getExpectedStatusCodes(),
+                            $generalCfg->getExpectedStatusCodes()
+                        ));
+                    } else {
+                        $newConfig->setExpectedStatusCodes($requestCfg->getExpectedStatusCodes());
+                    }
+                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
+                    if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
+                        $newConfig->setExpectedStatusCodes(array_merge(
+                            $requestCfg->getExpectedStatusCodes(),
+                            $generalCfg->getExpectedStatusCodes()
+                        ));
+                    } else {
+                        $newConfig->setExpectedStatusCodes($generalCfg->getExpectedStatusCodes());
+                    }
+                } else {
+                    $newConfig->setExpectedStatusCodes($appConfig['expected_status_codes']);
+                }
+                break;
 
-        if (!$reqExpectedStatusCodes) {
-            $newConfig->setExpectedStatusCodes($genExpectedStatusCodes); // nothing to merge
-        } elseif (!$genExpectedStatusCodes) {
-            $newConfig->setExpectedStatusCodes($reqExpectedStatusCodes); // nothing to merge
-        } else { // merge
-            $statusCodes = array_values(array_unique(array_merge(
-                $newConfig->getExpectedStatusCodes(), $genExpectedStatusCodes
-            )));
-
-            $newConfig->setExpectedStatusCodes($statusCodes);
-        }
-
-        if (!$newConfig->getExpectedStatusCodes()) {
-            $newConfig->setExpectedStatusCodes($appConfig['expected_status_codes']); // none were set in batch
+            default:
+                // TODO: logic exception
+                throw new SerializationException('Unexpected config merge strategy type: ' .
+                    $newConfig->getConfigMerge()
+                );
         }
     }
 
@@ -429,6 +453,7 @@ class Sender
      * @param RequestConfig|null $generalCfg
      * @param string|null $cfgMergeStrategy
      * @return RequestConfig
+     * @throws SerializationException
      */
     protected function mergeRequestConfigScopes(array $appConfig, ?RequestConfig $requestCfg, ?RequestConfig $generalCfg, ?string $cfgMergeStrategy): RequestConfig
     {
@@ -452,6 +477,7 @@ class Sender
      * @param array $appConfig
      * @param RequestConfig|null $requestCfg
      * @return RequestConfig
+     * @throws SerializationException
      */
     protected function mergeRequestConfigDefaults(array $appConfig, RequestConfig $requestCfg): RequestConfig
     {

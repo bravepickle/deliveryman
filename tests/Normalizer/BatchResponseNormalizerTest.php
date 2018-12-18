@@ -109,6 +109,7 @@ class BatchResponseNormalizerTest extends TestCase
                         ],
                     ],
                     'status' => 'failed',
+                    'failed' => null
                 ],
             ],
         ];

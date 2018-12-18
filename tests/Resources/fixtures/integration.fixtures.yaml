@@ -49,6 +49,7 @@ batchRequestProvider:
                     data: null
             status: ok
             errors: null
+            failed: null
 
 configProvider:
     -   config:
@@ -77,6 +78,7 @@ configProvider:
             data: null
             status: ok
             errors: null
+            failed: null
     -   config:
             domains:
                 - 'http://example.com'
@@ -120,6 +122,8 @@ configProvider:
             data: null
             status: failed
             errors:
+                '#46': 'Request failed to complete.'
+            failed:
                 '#46':
                     id: '#46'
                     headers: [{ name: Content-Type, value: application/json }]
@@ -158,6 +162,7 @@ configProvider:
                 data: ''
         output:
             errors: null
+            failed: null
             status: ok
             data:
                 '#46':
@@ -191,7 +196,9 @@ configProvider:
             status: aborted
             errors:
                 leslie: 'Request failed to complete.'
-#                    id: 'leslie'
-#                    headers: [{ name: Content-Type, value: 'application/json' }]
-#                    statusCode: 401
-#                    data: { error: Unauthorized }
+            failed:
+                leslie:
+                    id: 'leslie'
+                    headers: [{ name: Content-Type, value: 'application/json' }]
+                    statusCode: 401
+                    data: { error: Unauthorized }

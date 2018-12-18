@@ -25,7 +25,6 @@ class HttpChannelTest extends TestCase
      * @param array $input
      * @param $returnResponse
      * @param array $expected
-     * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Deliveryman\Exception\ChannelException
      */
@@ -44,21 +43,21 @@ class HttpChannelTest extends TestCase
                         'handler' => $handler,
                     ],
                 ]
-            ]
+            ],
+            'expected_status_codes' => [200, 404],
         ]);
 
         $channel = new HttpChannel($configManager);
-        $actualResponses = $channel->send($input);
+        $channel->send($input);
 
-        $this->assertArrayHasKey('GET_http://example.com/comments', $actualResponses);
+        $this->assertArrayHasKey('GET_http://example.com/comments', $channel->getOkResponses());
 
         /** @var Response $actualResponse */
-        $actualResponse = $actualResponses['GET_http://example.com/comments'];
+        $actualResponse = $channel->getOkResponses()['GET_http://example.com/comments'];
 
         $this->assertTrue($actualResponse instanceof ResponseInterface, 'Response should be PSR-7 interface.');
 
         $this->assertEquals($expected['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
-//        $this->assertEquals($expected['headers'], $actualResponse->getHeaders(), 'Headers differ');
         $this->assertEquals($expected['data'], $actualResponse->getBody()->getContents(), 'Body differs');
     }
 
@@ -114,15 +113,18 @@ class HttpChannelTest extends TestCase
                         'allow_redirects' => false,
                     ],
                 ]
-            ]
+            ],
+            'expected_status_codes' => [200, 301, 400],
         ]);
 
         $channel = new HttpChannel($configManager);
-        $actualResponses = $channel->send($input);
+        $channel->send($input);
+        $actualResponses = $channel->getOkResponses();
 
         $this->assertFalse($channel->hasErrors(), 'Errors found in processes.');
+        $this->assertFalse($channel->hasFailedResponses(), 'Failed responses found in processes.');
 
-        $this->assertArrayHasKey($expected[0]['id'], $actualResponses);
+        $this->assertArrayHasKey($expected[0]['id'], $channel->getOkResponses());
 
         /** @var Response $actualResponse */
         $actualResponse = $actualResponses[$expected[0]['id']];
@@ -225,7 +227,6 @@ class HttpChannelTest extends TestCase
      * @param array $input
      * @param $returnResponses
      * @param array $expected
-     * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Deliveryman\Exception\ChannelException
      */
@@ -244,11 +245,13 @@ class HttpChannelTest extends TestCase
                         'allow_redirects' => false,
                     ],
                 ]
-            ]
+            ],
+            'on_fail' => 'proceed',
         ]);
 
         $channel = new HttpChannel($configManager);
-        $actualResponses = $channel->send($input);
+        $channel->send($input);
+        $actualResponses = $channel->getOkResponses();
 
         $this->assertFalse($channel->hasErrors(), 'Errors found in processes.');
 

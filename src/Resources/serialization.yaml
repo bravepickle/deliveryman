@@ -65,3 +65,5 @@ Deliveryman\Entity\Response:
             type: string
         data:
             type: array
+        failed:
+            type: array

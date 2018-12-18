@@ -108,8 +108,6 @@ class IntegrationTest extends TestCase
         ) use ($mockHandler, &$expectedRequests) {
             $expected = array_shift($expectedRequests);
 
-//            print_r($request->getHeaders());
-
             $this->assertEquals($expected->getMethod(), $request->getMethod(), 'Sent request method differs from expected.');
             $this->assertEquals($expected->getUri(), $request->getUri(), 'Sent request URI differs from expected.');
             $this->assertEquals($expected->getHeaders(), $request->getHeaders(), 'Sent request headers differs from expected.');
@@ -128,8 +126,6 @@ class IntegrationTest extends TestCase
 
         $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json'));
         $actual = $serializer->normalize($batchResponse);
-
-        print_r($actual);
 
         $this->assertEquals($output, $actual);
     }
@@ -176,6 +172,7 @@ class IntegrationTest extends TestCase
                 );
             }
         }
+
         return $data;
     }
 

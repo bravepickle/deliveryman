@@ -27,6 +27,12 @@ class BatchResponse
     protected $data;
 
     /**
+     * Marked as failed responses
+     * @var array|null
+     */
+    protected $failed;
+
+    /**
      * Errors listed here for processing responses
      * @var array|null
      */
@@ -91,6 +97,25 @@ class BatchResponse
     public function setErrors(?array $errors): BatchResponse
     {
         $this->errors = $errors;
+
+        return $this;
+    }
+
+    /**
+     * @return array|null
+     */
+    public function getFailed(): ?array
+    {
+        return $this->failed;
+    }
+
+    /**
+     * @param array|null $failed
+     * @return BatchResponse
+     */
+    public function setFailed(?array $failed): BatchResponse
+    {
+        $this->failed = $failed;
 
         return $this;
     }
