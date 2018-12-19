@@ -18,12 +18,14 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
 use Symfony\Component\Serializer\Mapping\Loader\YamlFileLoader;
 use Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer;
 use Symfony\Component\Serializer\Serializer;
 use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\HttpFoundation\Request as HttpRequest;
 
 /**
  * Class IntegrationTest
@@ -71,14 +73,26 @@ class IntegrationTest extends TestCase
 
     /**
      * @param array $config
+     * @param HttpRequest|null $masterRequest
      * @return Sender
      */
-    protected function initSender(array $config): Sender
+    protected function initSender(array $config, ?HttpRequest $masterRequest = null): Sender
     {
         $configManager = new ConfigManager();
         $configManager->addConfiguration($config);
 
-        return new Sender(new HttpChannel($configManager), $configManager, new BatchRequestValidator($configManager));
+        if ($masterRequest) {
+            $requestStack = new RequestStack();
+            $requestStack->push($masterRequest);
+        } else {
+            $requestStack = null;
+        }
+
+        return new Sender(
+            new HttpChannel($configManager, $requestStack),
+            $configManager,
+            new BatchRequestValidator($configManager)
+        );
     }
 
     /**
@@ -99,8 +113,7 @@ class IntegrationTest extends TestCase
         array $responses,
         array $expectedRequests,
         array $output
-    )
-    {
+    ) {
         $mockHandler = new MockHandler($responses);
         $config['channels']['http']['request_options']['handler'] = HandlerStack::create(function (
             RequestInterface $request,
@@ -147,8 +160,10 @@ class IntegrationTest extends TestCase
         array $responses,
         array $expectedRequests,
         array $output
-    )
-    {
+    ) {
+        $masterRequest = new HttpRequest();
+        $masterRequest->headers->add($input['headers']);
+
         $mockHandler = new MockHandler($responses);
         $config['channels']['http']['request_options']['handler'] = HandlerStack::create(function (
             RequestInterface $request,
@@ -163,7 +178,8 @@ class IntegrationTest extends TestCase
 
             return $mockHandler($request, $options);
         });
-        $sender = $this->initSender($config);
+
+        $sender = $this->initSender($config, $masterRequest);
         $serializer = $this->initSerializer();
 
         $this->assertTrue($serializer->supportsDenormalization($input, BatchRequest::class));

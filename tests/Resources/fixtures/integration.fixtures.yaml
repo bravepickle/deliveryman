@@ -217,8 +217,8 @@ clientRequestProvider:
 
         input:
             headers:
-                - { name: 'X-Bar', value: 'unused header' }
-                - { name: 'X-Foo', value: 'jeronimo' }
+                'X-Bar': 'unused header'
+                'X-Foo': 'jeronimo'
             queues:
                 - { uri: 'http://example.com/user', id: 'user', headers: [{ name: 'X-Auth', value: 'secured_key' }]}
         responses:
@@ -234,15 +234,14 @@ clientRequestProvider:
                 headers:
                     User-Agent: [testing/1.0]
                     X-Auth: [secured_key]
-                    X-Foo: [jeronimo]
+                    x-foo: [jeronimo]
         output:
             failed: null
-            status: aborted
-            errors:
-                leslie: 'Request failed to complete.'
+            status: ok
+            errors: null
             data:
-                leslie:
-                    id: 'leslie'
+                user:
+                    id: 'user'
                     headers: [{ name: X-Status, value: 'accepted' }]
                     statusCode: 200
-                    data: { error: Unauthorized }
+                    data: 'John Doe found!'

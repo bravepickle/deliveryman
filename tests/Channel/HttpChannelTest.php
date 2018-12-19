@@ -193,7 +193,7 @@ class HttpChannelTest extends TestCase
             [
                 'id' => 'post_comments',
                 'statusCode' => 400,
-                'headers' => ['Content-Type' => ['plain/text; utf8']],
+                'headers' => ['Content-Type' => ['plain/text; charset=utf8']],
                 'data' => 'Invalid input format',
             ],
             [

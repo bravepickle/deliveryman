@@ -13,6 +13,7 @@ use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\RequestOptions;
 use GuzzleHttp\Promise;
 use Psr\Http\Message\ResponseInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Class HttpChannel
@@ -22,6 +23,10 @@ use Psr\Http\Message\ResponseInterface;
 class HttpChannel extends AbstractChannel
 {
     const MSG_REQUEST_FAILED = 'Request failed to complete.';
+    const OPT_RECEIVER_HEADERS = 'receiver_headers';
+    const OPT_SENDER_HEADERS = 'sender_headers';
+    const OPT_CHANNELS = 'channels';
+    const OPT_REQUEST_OPTIONS = 'request_options';
 
     /**
      * @var ConfigManager
@@ -29,12 +34,24 @@ class HttpChannel extends AbstractChannel
     protected $configManager;
 
     /**
+     * @var array|null
+     */
+    protected $config;
+
+    /**
+     * @var RequestStack|null
+     */
+    protected $requestStack;
+
+    /**
      * Sender constructor.
      * @param ConfigManager $configManager
+     * @param RequestStack|null $requestStack
      */
-    public function __construct(ConfigManager $configManager)
+    public function __construct(ConfigManager $configManager, ?RequestStack $requestStack = null)
     {
         $this->configManager = $configManager;
+        $this->requestStack = $requestStack;
     }
 
     /**
@@ -44,7 +61,7 @@ class HttpChannel extends AbstractChannel
     public function createClient()
     {
         $appConfig = $this->configManager->getConfiguration();
-        $options = $appConfig['channels'][$this->getName()]['request_options'] ?? [];
+        $options = $appConfig[self::OPT_CHANNELS][$this->getName()][self::OPT_REQUEST_OPTIONS] ?? [];
 
         // never allow throwing exceptions. Statuses should be handled elsewhere
         $options[RequestOptions::HTTP_ERRORS] = false;
@@ -56,9 +73,22 @@ class HttpChannel extends AbstractChannel
      * @return array
      * @throws \Psr\Cache\InvalidArgumentException
      */
+    protected function getChannelConfig()
+    {
+        return $this->getMasterConfig()[self::OPT_CHANNELS][$this->getName()];
+    }
+
+    /**
+     * @return array
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
     protected function getMasterConfig()
     {
-        return $this->configManager->getConfiguration();
+        if ($this->config === null) {
+            $this->config = $this->configManager->getConfiguration();
+        }
+
+        return $this->config;
     }
 
     /**
@@ -102,6 +132,7 @@ class HttpChannel extends AbstractChannel
      * @param array|null $queue
      * @param Client $client
      * @return Promise\PromiseInterface|null
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function chainSendRequest(?array $queue, Client $client)
     {
@@ -113,7 +144,6 @@ class HttpChannel extends AbstractChannel
         $request = array_shift($queue);
         if ($request) {
             $options = $this->buildRequestOptions($request);
-//            $options[RequestOptions::SYNCHRONOUS] = true;
 
             return $client->requestAsync($request->getMethod(), $request->getUri(), $options)
                 ->then($this->getChainFulfilledCallback($queue, $client, $request),
@@ -211,6 +241,7 @@ class HttpChannel extends AbstractChannel
     /**
      * @param Request $request
      * @return array
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function buildRequestOptions(Request $request): array
     {
@@ -223,7 +254,11 @@ class HttpChannel extends AbstractChannel
             foreach ($request->getHeaders() as $header) {
                 $options[RequestOptions::HEADERS][$header->getName()][] = $header->getValue();
             }
+        } else {
+            $options[RequestOptions::HEADERS] = [];
         }
+
+        $this->appendInitialRequestHeaders($request, $options[RequestOptions::HEADERS]);
 
         // TODO: check resource input format from configs
         if ($request->getData()) {
@@ -285,8 +320,7 @@ class HttpChannel extends AbstractChannel
 
                     case RequestConfig::CONFIG_ON_FAIL_ABORT:
                         throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
-                            ->setRequest($request)
-                        ;
+                            ->setRequest($request);
 
                     case RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE:
                         return; // stop chaining requests from queue
@@ -310,11 +344,11 @@ class HttpChannel extends AbstractChannel
      */
     protected function getChainRejectedCallback(?array $queue, Client $client, Request $request): \Closure
     {
-        return function (RequestException $e) use ($client, $queue, $request) {
+        return function ($e) use ($client, $queue, $request) {
             // TODO: check unexpected_status_codes if should be marked as error
             // TODO: dispatch event on fail
             $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
-            if ($e->getResponse()) {
+            if ($e instanceof RequestException && $e->getResponse()) {
                 $this->addFailedResponse($request->getId(), $e->getResponse());
             }
 
@@ -325,8 +359,7 @@ class HttpChannel extends AbstractChannel
 
                 case RequestConfig::CONFIG_ON_FAIL_ABORT:
                     throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
-                        ->setRequest($request)
-                    ;
+                        ->setRequest($request);
 
                 case RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE:
                     return; // stop chaining requests from queue
@@ -348,7 +381,7 @@ class HttpChannel extends AbstractChannel
             if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request)) &&
                 in_array($this->getOnFailWithFallback($request), [
                     RequestConfig::CONFIG_ON_FAIL_ABORT,
-                    RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE
+                    RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE,
                 ])
             ) {
                 // todo: save failed objects and succeeded responses in separate data sets
@@ -369,9 +402,9 @@ class HttpChannel extends AbstractChannel
      */
     protected function getSendRejectedCallback(Request $request): \Closure
     {
-        return function (RequestException $e) use ($request) {
+        return function ($e) use ($request) {
             $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
-            if ($e->getResponse()) {
+            if ($e instanceof RequestException && $e->getResponse()) {
                 $this->addFailedResponse($request->getId(), $e->getResponse());
             }
 
@@ -391,6 +424,67 @@ class HttpChannel extends AbstractChannel
                         $this->getOnFailWithFallback($request));
             }
         };
+    }
+
+    /**
+     * @inheritdoc
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function addOkResponse($path, ResponseInterface $response)
+    {
+        return parent::addOkResponse($path, $this->filterResponseHeaders($response));
+    }
+
+    /**
+     * @param ResponseInterface $response
+     * @return ResponseInterface
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function filterResponseHeaders(ResponseInterface $response)
+    {
+        $allowedHeaders = $this->getChannelConfig()[self::OPT_RECEIVER_HEADERS] ?? [];
+        if ($allowedHeaders) { // if empty consider that all allowed
+            foreach ($response->getHeaders() as $name => $values) {
+                if (!in_array($name, $allowedHeaders)) {
+                    $response = $response->withoutHeader($name);
+                }
+            }
+        }
+
+        return $response;
+    }
+
+    /**
+     * @param Request $request
+     * @param array|null $headers
+     * @return array|void
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function appendInitialRequestHeaders(Request $request, ?array &$headers)
+    {
+        if (!$this->requestStack) {
+            return;
+        }
+
+        $initialRequest = $this->requestStack->getCurrentRequest();
+        if (!$initialRequest) {
+            return;
+        }
+
+        $allowedHeaders = $this->getChannelConfig()[self::OPT_SENDER_HEADERS] ?? [];
+        if (!$allowedHeaders) { // if empty consider that all needed
+            foreach ($request->getHeaders() as $header) {
+                $headers[$header->getName()][] = $header->getValue();
+            }
+
+            return;
+        }
+
+        foreach ($allowedHeaders as $allowedHeader) {
+            if ($initialRequest->headers->has($allowedHeader)) {
+                $headers[$allowedHeader] = $initialRequest->headers->get($allowedHeader);
+            }
+        }
     }
 
 }
