@@ -332,7 +332,10 @@ class HttpChannel extends AbstractChannel
             }
 
             $this->addOkResponse($request->getId(), $response);
-            $this->chainSendRequest($queue, $client)->wait();
+            $promise = $this->chainSendRequest($queue, $client);
+            if ($promise) {
+                $promise->wait();
+            }
         };
     }
 

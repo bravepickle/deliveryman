@@ -315,8 +315,8 @@ class Sender
                     $targetResponse->setData(null);
                 } else {
                     try {
-                        $targetResponse->setData((new JsonDecode([JsonDecode::ASSOCIATIVE => true]))
-                            ->decode($data,'json'));
+                        $targetResponse->setData((new JsonDecode())
+                            ->decode($data,'json', ['json_decode_associative' => true]));
                     } catch (NotEncodableValueException $e) {
                         // TODO: add event dispatcher, if defined
                         $targetResponse->setData($data); // set raw data
