@@ -118,6 +118,7 @@ The following steps should be taken to make agent working properly:
 - [ ] Only defined in *requestHeadersRules*
 - [ ] Why not use JS frontend library instead? When is it better this way?
 - [ ] Support binary, form data format
+- [ ] Add extendable rules for verification data 
 - [ ] Split error texts from failed responses. Errors field will contain text messages, failed - failed responses
 - [ ] Solve problem of how to pass headers in responses back if needed to be added to batch response, e.g. cookies 
 - [ ] Optimize handling queues: single queue - run normally; multiple queues but single request per each - run in parallel;

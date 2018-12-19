@@ -34,32 +34,11 @@ class Configuration implements ConfigurationInterface
     {
         $treeBuilder = new TreeBuilder($this->name);
 
-        if (method_exists($treeBuilder, 'getRootNode')) {
-            $rootNode = $treeBuilder->getRootNode();
-        } else {
-            // is workaround to support symfony/config 4.1 and older
-            $rootNode = $treeBuilder->root($this->name);
-        }
-
-        $nodeBuilder = $rootNode->children();
-
-        $this->addDomainsBranch($nodeBuilder);
-        $this->addChannelsBranch($nodeBuilder);
-        $this->addBatchFormatLeaf($nodeBuilder);
-        $this->addResourceFormatLeaf($nodeBuilder);
-        $this->addOnFailLeaf($nodeBuilder);
-        $this->addConfigMergeLeaf($nodeBuilder);
-        $this->addExpStatCodesLeaf($nodeBuilder);
-        $this->addMethodsLeaf($nodeBuilder);
-        $this->addSilentLeaf($nodeBuilder);
-        $this->addForwardedHeadersLeaf($nodeBuilder);
-
-        $nodeBuilder->end();
+        $this->buildNodesTree($treeBuilder);
 
         // TODO: move to channel config and add validator for those values to be used properly
         // TODO: move channel-related configs inside channel instance description
         // TODO: we need to specify input and output formats for third party resources. Input should support form-data
-        // TODO: move to channel
 
         return $treeBuilder;
     }
@@ -260,5 +239,36 @@ class Configuration implements ConfigurationInterface
                 'the rest specified bin batch request body.')
             ->defaultValue(true)
         ->end();
+    }
+
+    /**
+     * @param TreeBuilder $treeBuilder
+     * @return NodeBuilder
+     */
+    public function buildNodesTree(TreeBuilder $treeBuilder): NodeBuilder
+    {
+        if (method_exists($treeBuilder, 'getRootNode')) {
+            $rootNode = $treeBuilder->getRootNode();
+        } else {
+            // is workaround to support symfony/config 4.1 and older
+            $rootNode = $treeBuilder->root($this->name);
+        }
+
+        $nodeBuilder = $rootNode->children();
+
+        $this->addDomainsBranch($nodeBuilder);
+        $this->addChannelsBranch($nodeBuilder);
+        $this->addBatchFormatLeaf($nodeBuilder);
+        $this->addResourceFormatLeaf($nodeBuilder);
+        $this->addOnFailLeaf($nodeBuilder);
+        $this->addConfigMergeLeaf($nodeBuilder);
+        $this->addExpStatCodesLeaf($nodeBuilder);
+        $this->addMethodsLeaf($nodeBuilder);
+        $this->addSilentLeaf($nodeBuilder);
+        $this->addForwardedHeadersLeaf($nodeBuilder);
+
+        $nodeBuilder->end();
+
+        return $nodeBuilder;
     }
 }
