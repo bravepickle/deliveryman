@@ -20,8 +20,6 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
-use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
-use Symfony\Component\Serializer\Mapping\Loader\YamlFileLoader;
 use Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer;
 use Symfony\Component\Serializer\Serializer;
 use Symfony\Component\Yaml\Yaml;
@@ -60,10 +58,7 @@ class IntegrationTest extends TestCase
      */
     protected function initSerializer()
     {
-        $classMetadataFactory = new ClassMetadataFactory(
-            new YamlFileLoader(__DIR__ . '/../../src/Resources/serialization.yaml')
-        );
-        $getSetNormalizer = new GetSetMethodNormalizer($classMetadataFactory);
+        $getSetNormalizer = new GetSetMethodNormalizer();
         $batchNormalizer = new BatchRequestNormalizer();
 
         $serializer = new Serializer([$batchNormalizer, $getSetNormalizer], [new JsonEncoder()]);
