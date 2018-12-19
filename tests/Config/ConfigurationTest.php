@@ -7,7 +7,7 @@
 namespace DeliverymanTest\Config;
 
 
-use Deliveryman\Config\Configuration;
+use Deliveryman\DependencyInjection\Configuration;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;

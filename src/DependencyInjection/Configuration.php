@@ -4,10 +4,9 @@
  * Time: 00:02
  */
 
-namespace Deliveryman\Config;
+namespace Deliveryman\DependencyInjection;
 
 
-use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
@@ -26,8 +25,12 @@ class Configuration implements ConfigurationInterface
     {
         $treeBuilder = new TreeBuilder(self::CONFIG_NAME);
 
-        /** @var ArrayNodeDefinition $rootNode */
-        $rootNode = $treeBuilder->root(self::CONFIG_NAME);
+        if (method_exists($treeBuilder, 'getRootNode')) {
+            $rootNode = $treeBuilder->getRootNode();
+        } else {
+            // is workaround to support symfony/config 4.1 and older
+            $rootNode = $treeBuilder->root(self::CONFIG_NAME);
+        }
 
         $nodeBuilder = $rootNode->children();
 

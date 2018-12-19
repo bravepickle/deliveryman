@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Deliveryman\Service;
 
-use Deliveryman\Config\Configuration;
+use Deliveryman\DependencyInjection\Configuration;
 use Deliveryman\EventListener\Event;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Config\Definition\Processor;
