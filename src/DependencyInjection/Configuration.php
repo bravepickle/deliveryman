@@ -15,21 +15,30 @@ class Configuration implements ConfigurationInterface
 {
     /**
      * Name of configuration settings provided for given library
+     * @var string
      */
-    const CONFIG_NAME = 'deliveryman';
+    protected $name = 'deliveryman';
+
+    /**
+     * @param string $name
+     */
+    public function setName(string $name): void
+    {
+        $this->name = $name;
+    }
 
     /**
      * @inheritdoc
      */
     public function getConfigTreeBuilder()
     {
-        $treeBuilder = new TreeBuilder(self::CONFIG_NAME);
+        $treeBuilder = new TreeBuilder($this->name);
 
         if (method_exists($treeBuilder, 'getRootNode')) {
             $rootNode = $treeBuilder->getRootNode();
         } else {
             // is workaround to support symfony/config 4.1 and older
-            $rootNode = $treeBuilder->root(self::CONFIG_NAME);
+            $rootNode = $treeBuilder->root($this->name);
         }
 
         $nodeBuilder = $rootNode->children();
