@@ -8,6 +8,7 @@ namespace Deliveryman\DependencyInjection;
 
 
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
+use Symfony\Component\Config\Definition\Builder\NodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
@@ -243,9 +244,9 @@ class Configuration implements ConfigurationInterface
 
     /**
      * @param TreeBuilder $treeBuilder
-     * @return NodeBuilder
+     * @return NodeDefinition
      */
-    public function buildNodesTree(TreeBuilder $treeBuilder): NodeBuilder
+    public function buildNodesTree(TreeBuilder $treeBuilder): NodeDefinition
     {
         if (method_exists($treeBuilder, 'getRootNode')) {
             $rootNode = $treeBuilder->getRootNode();
@@ -267,8 +268,6 @@ class Configuration implements ConfigurationInterface
         $this->addSilentLeaf($nodeBuilder);
         $this->addForwardedHeadersLeaf($nodeBuilder);
 
-        $nodeBuilder->end();
-
-        return $nodeBuilder;
+        return $nodeBuilder->end();
     }
 }
