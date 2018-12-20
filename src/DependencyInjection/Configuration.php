@@ -255,7 +255,7 @@ class Configuration implements ConfigurationInterface
             $rootNode = $treeBuilder->root($this->name);
         }
 
-        $nodeBuilder = $rootNode->children();
+        $nodeBuilder = $rootNode->addDefaultsIfNotSet()->children();
 
         $this->addDomainsBranch($nodeBuilder);
         $this->addChannelsBranch($nodeBuilder);
