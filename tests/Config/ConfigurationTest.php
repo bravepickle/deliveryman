@@ -52,7 +52,6 @@ class ConfigurationTest extends TestCase
             'on_fail' => 'abort',
             'config_merge' => 'first', // TODO: move me to channel
             'silent' => false,
-            'forward_master_headers' => true, // TODO: move me to channel
         ], $config);
     }
 
@@ -101,7 +100,6 @@ class ConfigurationTest extends TestCase
             'on_fail' => 'abort',
             'config_merge' => 'first',
             'silent' => false,
-            'forward_master_headers' => true,
         ], $config);
     }
 

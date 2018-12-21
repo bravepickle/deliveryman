@@ -49,7 +49,7 @@ class Configuration implements ConfigurationInterface
      */
     protected function addChannelsBranch(NodeBuilder $rootNode): void
     {
-        $defaultValues = [
+        $defaultValues = [ // TODO: update defaults after all options will be reconfigured, add missing
             'http' => [
                 'request_options' => [
                     'allow_redirects' => false,
@@ -210,18 +210,6 @@ class Configuration implements ConfigurationInterface
     }
 
     /**
-     * @param NodeBuilder $nodeBuilder
-     */
-    protected function addForwardedHeadersLeaf(NodeBuilder $nodeBuilder): void
-    {
-        $nodeBuilder->booleanNode('forward_master_headers')
-            ->info('Pass all initial headers sent from client to batched requests. Headers are merged with ' .
-                'the rest specified bin batch request body.')
-            ->defaultValue(true)
-        ->end();
-    }
-
-    /**
      * @param TreeBuilder $treeBuilder
      * @return NodeDefinition
      */
@@ -243,7 +231,6 @@ class Configuration implements ConfigurationInterface
         $this->addOnFailLeaf($nodeBuilder);
         $this->addConfigMergeLeaf($nodeBuilder);
         $this->addSilentLeaf($nodeBuilder);
-        $this->addForwardedHeadersLeaf($nodeBuilder);
 
         return $nodeBuilder->end();
     }
