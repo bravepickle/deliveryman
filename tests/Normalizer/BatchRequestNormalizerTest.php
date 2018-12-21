@@ -60,7 +60,6 @@ class BatchRequestNormalizerTest extends TestCase
                         'silent' => true,
                         'configMerge' => null,
                         'onFail' => null,
-                        'expectedStatusCodes' => null,
                         'format' => null,
                         'channel' => null,
                     ],
@@ -73,7 +72,7 @@ class BatchRequestNormalizerTest extends TestCase
                         'silent' => false,
                         'configMerge' => 'first',
                         'onFail' => 'proceed',
-                        'expectedStatusCodes' => 200,
+                        'channel' => ['expectedStatusCodes' => [200],]
                     ],
                 ],
                 'expected' => [
@@ -81,9 +80,8 @@ class BatchRequestNormalizerTest extends TestCase
                         'silent' => false,
                         'configMerge' => 'first',
                         'onFail' => 'proceed',
-                        'expectedStatusCodes' => [200],
                         'format' => null,
-                        'channel' => null,
+                        'channel' => ['expectedStatusCodes' => [200],]
                     ],
                     'queues' => null,
                 ],
@@ -99,7 +97,7 @@ class BatchRequestNormalizerTest extends TestCase
                                 'config' => [
                                     'onFail' => 'abort',
                                     'configMerge' => 'unique',
-                                    'expectedStatusCodes' => [200, 404],
+                                    'channel' => ['expectedStatusCodes' => [200, 404],]
                                 ],
                                 'headers' => [
                                     ['name' => 'Origin', 'value' => 'http://admin-panel.example.com'],
@@ -132,10 +130,9 @@ class BatchRequestNormalizerTest extends TestCase
                                 'config' => [
                                     'onFail' => 'abort',
                                     'configMerge' => 'unique',
-                                    'expectedStatusCodes' => [200, 404],
                                     'silent' => null,
                                     'format' => null,
-                                    'channel' => null,
+                                    'channel' => ['expectedStatusCodes' => [200, 404],]
                                 ],
                                 'headers' => [
                                     ['name' => 'Origin', 'value' => 'http://admin-panel.example.com'],

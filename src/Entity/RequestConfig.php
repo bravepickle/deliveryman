@@ -3,6 +3,7 @@
 namespace Deliveryman\Entity;
 
 
+use Deliveryman\Entity\HttpQueue\ChannelConfig;
 use Deliveryman\Normalizer\NormalizableInterface;
 
 class RequestConfig implements NormalizableInterface
@@ -26,12 +27,6 @@ class RequestConfig implements NormalizableInterface
      * @var string|null
      */
     protected $onFail;
-
-    /**
-     * TODO: move to channel request-config
-     * @var array|null
-     */
-    protected $expectedStatusCodes;
 
     /**
      * @var boolean|null
@@ -87,25 +82,6 @@ class RequestConfig implements NormalizableInterface
     }
 
     /**
-     * @return array|null
-     */
-    public function getExpectedStatusCodes(): ?array
-    {
-        return $this->expectedStatusCodes;
-    }
-
-    /**
-     * @param array|null $expectedStatusCodes
-     * @return RequestConfig
-     */
-    public function setExpectedStatusCodes(?array $expectedStatusCodes): RequestConfig
-    {
-        $this->expectedStatusCodes = $expectedStatusCodes;
-
-        return $this;
-    }
-
-    /**
      * @return bool|null
      */
     public function getSilent(): ?bool
@@ -144,7 +120,7 @@ class RequestConfig implements NormalizableInterface
     }
 
     /**
-     * @return mixed
+     * @return mixed|ChannelConfig
      */
     public function getChannel()
     {

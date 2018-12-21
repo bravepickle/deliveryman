@@ -33,7 +33,7 @@ class ConfigurationTest extends TestCase
         ]);
 
         $this->assertEquals([
-            'domains' => ['example.com',],
+            'domains' => ['example.com',], // TODO: rename to format
             'channels' => [
                 'http' => [
                     'request_options' => [
@@ -44,16 +44,15 @@ class ConfigurationTest extends TestCase
                     ],
                     'sender_headers' => [],
                     'receiver_headers' => [],
+                    'expected_status_codes' => [200, 201, 202, 204], // TODO: move me to channel
                 ],
             ],
-            'batch_format' => 'json',
-            'resource_format' => 'json',
+            'batch_format' => 'json', // TODO: rename to format
+            'resource_format' => 'json', // TODO: move me to channel
             'on_fail' => 'abort',
-            'config_merge' => 'first',
-            'expected_status_codes' => [200, 201, 202, 204],
-            'methods' => ['GET', 'POST'],
+            'config_merge' => 'first', // TODO: move me to channel
             'silent' => false,
-            'forward_master_headers' => true,
+            'forward_master_headers' => true, // TODO: move me to channel
         ], $config);
     }
 
@@ -94,14 +93,13 @@ class ConfigurationTest extends TestCase
                     ],
                     'sender_headers' => [],
                     'receiver_headers' => [],
+                    'expected_status_codes' => [200, 201, 202, 204],
                 ],
             ],
             'batch_format' => 'json',
             'resource_format' => 'json',
             'on_fail' => 'abort',
             'config_merge' => 'first',
-            'expected_status_codes' => [200, 201, 202, 204],
-            'methods' => ['GET', 'POST'],
             'silent' => false,
             'forward_master_headers' => true,
         ], $config);

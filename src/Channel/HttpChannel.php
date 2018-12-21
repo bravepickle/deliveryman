@@ -2,6 +2,8 @@
 
 namespace Deliveryman\Channel;
 
+use Deliveryman\Entity\BatchRequest;
+use Deliveryman\Entity\HttpQueue\ChannelConfig;
 use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestConfig;
 use Deliveryman\Exception\ChannelException;
@@ -27,6 +29,8 @@ class HttpChannel extends AbstractChannel
     const OPT_SENDER_HEADERS = 'sender_headers';
     const OPT_CHANNELS = 'channels';
     const OPT_REQUEST_OPTIONS = 'request_options';
+    const OPT_EXPECTED_STATUS_CODES = 'expected_status_codes';
+    const OPT_CONFIG_MERGE = 'config_merge';
 
     /**
      * @var ConfigManager
@@ -42,6 +46,11 @@ class HttpChannel extends AbstractChannel
      * @var RequestStack|null
      */
     protected $requestStack;
+
+    /**
+     * @var BatchRequest|null
+     */
+    protected $batchRequest;
 
     /**
      * Sender constructor.
@@ -95,8 +104,10 @@ class HttpChannel extends AbstractChannel
      * @inheritdoc
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    public function send(array $queues)
+    public function send(BatchRequest $batchRequest)
     {
+        $this->batchRequest = $batchRequest;
+        $queues = $batchRequest->getQueues();
         if ($this->hasSingleRequest($queues)) {
             $request = $this->getFirstRequest($queues);
             $this->sendRequest($request);
@@ -276,14 +287,15 @@ class HttpChannel extends AbstractChannel
      * @param Request $request
      * @return array
      * @throws \Psr\Cache\InvalidArgumentException
+     * @throws ChannelException
      */
     protected function getExpectedStatusCodesWithFallback(Request $request)
     {
-        if ($request && $request->getConfig() && $request->getConfig()->getExpectedStatusCodes()) {
-            return (array)$request->getConfig()->getExpectedStatusCodes();
-        }
+        $globalConfig = $this->batchRequest->getConfig() ? $this->batchRequest->getConfig()->getChannel() : null;
+        $requestConfig = $request->getConfig() ? $request->getConfig()->getChannel() : null;
+        $statusCodes = $this->mergeExpectedStatusCodes($requestConfig, $globalConfig);
 
-        return $this->getMasterConfig()['expected_status_codes'] ?? []; // fallback
+        return $statusCodes ?: $this->getChannelConfig()[self::OPT_EXPECTED_STATUS_CODES] ?? []; // fallback
     }
 
     /**
@@ -298,6 +310,59 @@ class HttpChannel extends AbstractChannel
         }
 
         return $this->getMasterConfig()['on_fail']; // fallback
+    }
+
+    /**
+     * @param ChannelConfig|null $requestCfg
+     * @param RequestConfig|null $globalConfig
+     * @return array|null
+     * @throws ChannelException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function mergeExpectedStatusCodes(?ChannelConfig $requestCfg, ?RequestConfig $globalConfig): ?array
+    {
+        $configMerge = $globalConfig ? $globalConfig->getConfigMerge() : $this->getMasterConfig()[self::OPT_CONFIG_MERGE];
+        $generalCfg = $globalConfig ? $globalConfig->getChannel() : null;
+        $channelConfig = $this->getChannelConfig();
+        switch ($configMerge) {
+            case RequestConfig::CONFIG_MERGE_IGNORE:
+                return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
+            case RequestConfig::CONFIG_MERGE_FIRST:
+                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
+                    return $requestCfg->getExpectedStatusCodes();
+                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
+                    return $generalCfg->getExpectedStatusCodes();
+                } else {
+                    return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
+                }
+                break;
+            case RequestConfig::CONFIG_MERGE_UNIQUE:
+                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
+                    if ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
+                        return array_merge(
+                            $requestCfg->getExpectedStatusCodes(),
+                            $generalCfg->getExpectedStatusCodes()
+                        );
+                    } else {
+                        return $requestCfg->getExpectedStatusCodes();
+                    }
+                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
+                    if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
+                        return array_merge(
+                            $requestCfg->getExpectedStatusCodes(),
+                            $generalCfg->getExpectedStatusCodes()
+                        );
+                    } else {
+                        return $generalCfg->getExpectedStatusCodes();
+                    }
+                } else {
+                    return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
+                }
+
+            default:
+                // TODO: logic exception
+                throw new ChannelException('Unexpected config merge strategy type: ' . $configMerge);
+        }
     }
 
     /**
@@ -348,7 +413,6 @@ class HttpChannel extends AbstractChannel
     protected function getChainRejectedCallback(?array $queue, Client $client, Request $request): \Closure
     {
         return function ($e) use ($client, $queue, $request) {
-            // TODO: check unexpected_status_codes if should be marked as error
             // TODO: dispatch event on fail
             $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
             if ($e instanceof RequestException && $e->getResponse()) {

@@ -86,8 +86,7 @@ configProvider:
             channels:
                 http:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
-            expected_status_codes:
-                - 200
+                    expected_status_codes: [200]
         input:
             queues:
                 -   uri: 'http://example.com/ask-something'

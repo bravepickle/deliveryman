@@ -252,12 +252,8 @@ class Sender
                 $requestConfig = $event->getRequestConfig();
             }
 
-            if (in_array($srcResponse->getStatusCode(), $requestConfig->getExpectedStatusCodes())) {
-                if (!$requestConfig->getSilent()) {
-                    $succeededResp[$targetResponse->getId()] = $targetResponse;
-                }
-            } else {
-                $failedResp[$targetResponse->getId()] = $targetResponse;
+            if (!$requestConfig->getSilent()) {
+                $succeededResp[$targetResponse->getId()] = $targetResponse;
             }
         }
 
@@ -374,63 +370,6 @@ class Sender
     }
 
     /**
-     * @param RequestConfig $newConfig
-     * @param RequestConfig|null $requestCfg
-     * @param RequestConfig|null $generalCfg
-     * @param array $appConfig
-     * @throws SerializationException
-     */
-    protected function mergeExpectedStatusCodes(RequestConfig $newConfig, ?RequestConfig $requestCfg, ?RequestConfig $generalCfg, array $appConfig): void
-    {
-        // TODO: set status codes from app config if not set here
-        // TODO: merge strategy should be used to define how to merge
-
-        switch($newConfig->getConfigMerge()) {
-            case RequestConfig::CONFIG_MERGE_IGNORE:
-                $newConfig->setExpectedStatusCodes($appConfig['expected_status_codes']);
-                break;
-            case RequestConfig::CONFIG_MERGE_FIRST:
-                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
-                    $newConfig->setExpectedStatusCodes($requestCfg->getExpectedStatusCodes());
-                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
-                    $newConfig->setExpectedStatusCodes($generalCfg->getExpectedStatusCodes());
-                } else {
-                    $newConfig->setExpectedStatusCodes($appConfig['expected_status_codes']);
-                }
-                break;
-            case RequestConfig::CONFIG_MERGE_UNIQUE:
-                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
-                    if ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
-                        $newConfig->setExpectedStatusCodes(array_merge(
-                            $requestCfg->getExpectedStatusCodes(),
-                            $generalCfg->getExpectedStatusCodes()
-                        ));
-                    } else {
-                        $newConfig->setExpectedStatusCodes($requestCfg->getExpectedStatusCodes());
-                    }
-                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
-                    if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
-                        $newConfig->setExpectedStatusCodes(array_merge(
-                            $requestCfg->getExpectedStatusCodes(),
-                            $generalCfg->getExpectedStatusCodes()
-                        ));
-                    } else {
-                        $newConfig->setExpectedStatusCodes($generalCfg->getExpectedStatusCodes());
-                    }
-                } else {
-                    $newConfig->setExpectedStatusCodes($appConfig['expected_status_codes']);
-                }
-                break;
-
-            default:
-                // TODO: logic exception
-                throw new SerializationException('Unexpected config merge strategy type: ' .
-                    $newConfig->getConfigMerge()
-                );
-        }
-    }
-
-    /**
      * take all default values from app config
      * @param array $appConfig
      * @return RequestConfig
@@ -442,7 +381,6 @@ class Sender
         $newConfig->setSilent($appConfig['silent']);
         $newConfig->setOnFail($appConfig['on_fail']);
         $newConfig->setConfigMerge($appConfig['config_merge']);
-        $newConfig->setExpectedStatusCodes($appConfig['expected_status_codes']);
 
         return $newConfig;
     }
@@ -468,7 +406,6 @@ class Sender
             $generalCfg->getOnFail() ?? $appConfig['on_fail']);
 
         $newConfig->setConfigMerge($cfgMergeStrategy);
-        $this->mergeExpectedStatusCodes($newConfig, $requestCfg, $generalCfg, $appConfig);
 
         return $newConfig;
     }
@@ -488,8 +425,6 @@ class Sender
         $newConfig->setOnFail($requestCfg->getOnFail() ?? $appConfig['on_fail']);
         $newConfig->setConfigMerge($requestCfg->getConfigMerge() ?? $appConfig['config_merge']);
 
-        $this->mergeExpectedStatusCodes($newConfig, $requestCfg, null, $appConfig);
-
         return $newConfig;
     }
 
@@ -501,7 +436,7 @@ class Sender
     protected function dispatchSend(BatchRequest $batchRequest, ChannelInterface $channel, bool &$aborted = false)
     {
         try {
-            $channel->send($batchRequest->getQueues());
+            $channel->send($batchRequest);
         } catch (ChannelException $e) {
             $aborted = true;
         }

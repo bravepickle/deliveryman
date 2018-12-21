@@ -8,6 +8,7 @@ namespace DeliverymanTest\Channel;
 
 
 use Deliveryman\Channel\HttpChannel;
+use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestHeader;
 use Deliveryman\Service\ConfigManager;
@@ -22,13 +23,13 @@ class HttpChannelTest extends TestCase
 {
     /**
      * @dataProvider basicProvider
-     * @param array $input
+     * @param BatchRequest $input
      * @param $returnResponse
      * @param array $expected
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Deliveryman\Exception\ChannelException
      */
-    public function testBasic(array $input, $returnResponse, array $expected)
+    public function testBasic(BatchRequest $input, $returnResponse, array $expected)
     {
         $handler = HandlerStack::create(new MockHandler([
             $returnResponse
@@ -42,9 +43,9 @@ class HttpChannelTest extends TestCase
                     'request_options' => [
                         'handler' => $handler,
                     ],
+                    'expected_status_codes' => [200, 404],
                 ]
             ],
-            'expected_status_codes' => [200, 404],
         ]);
 
         $channel = new HttpChannel($configManager);
@@ -76,6 +77,8 @@ class HttpChannelTest extends TestCase
             ]
         ];
 
+        $request = (new BatchRequest())->setQueues($queues);
+
         $expected = [
             'statusCode' => 404,
             'headers' => ['X-API' => ['test-server']],
@@ -85,20 +88,19 @@ class HttpChannelTest extends TestCase
         $response = new Response($expected['statusCode'], ['X-API' => 'test-server'], stream_for('{"error": "Not Found!"}'));
 
         return [
-            [$queues, $response, $expected],
+            [$request, $response, $expected],
         ];
     }
 
     /**
      * @dataProvider multiProvider
-     * @param array $input
-     * @param $returnResponses
+     * @param BatchRequest $input
+     * @param array $returnResponses
      * @param array $expected
-     * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Deliveryman\Exception\ChannelException
      */
-    public function testMulti(array $input, array $returnResponses, array $expected)
+    public function testMulti(BatchRequest $input, array $returnResponses, array $expected)
     {
         $handler = HandlerStack::create(new MockHandler($returnResponses));
 
@@ -112,9 +114,9 @@ class HttpChannelTest extends TestCase
                         'debug' => true,
                         'allow_redirects' => false,
                     ],
-                ]
+                    'expected_status_codes' => [200, 301, 400],
+                ],
             ],
-            'expected_status_codes' => [200, 301, 400],
         ]);
 
         $channel = new HttpChannel($configManager);
@@ -189,6 +191,8 @@ class HttpChannelTest extends TestCase
             ],
         ];
 
+        $request = (new BatchRequest())->setQueues($queues);
+
         $expected = [
             [
                 'id' => 'post_comments',
@@ -217,20 +221,20 @@ class HttpChannelTest extends TestCase
         ];
 
         return [
-            [$queues, $responses, $expected],
+            [$request, $responses, $expected],
         ];
     }
 
 
     /**
      * @dataProvider singleQueue
-     * @param array $input
+     * @param BatchRequest $input
      * @param $returnResponses
      * @param array $expected
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Deliveryman\Exception\ChannelException
      */
-    public function testSingleQueue(array $input, array $returnResponses, array $expected)
+    public function testSingleQueue(BatchRequest $input, array $returnResponses, array $expected)
     {
         $handler = HandlerStack::create(new MockHandler($returnResponses));
 
@@ -320,6 +324,8 @@ class HttpChannelTest extends TestCase
             ],
         ];
 
+        $request = (new BatchRequest())->setQueues($queues);
+
         $expected = [
             [
                 'id' => 'post_comments',
@@ -348,7 +354,7 @@ class HttpChannelTest extends TestCase
         ];
 
         return [
-            [$queues, $responses, $expected],
+            [$request, $responses, $expected],
         ];
     }
 

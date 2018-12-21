@@ -91,6 +91,14 @@ class Configuration implements ConfigurationInterface
                             ->example(['Set-Cookie'])
                             ->scalarPrototype()->cannotBeEmpty()->end()
                         ->end()
+                        ->arrayNode('expected_status_codes')
+                            ->info('List of all status codes that are considered OK, if returned. ' .
+                                'If any other status codes received by requests, then request is considered as failed.')
+                            ->example([200, 422, 400])
+                            ->defaultValue([200, 201, 202, 204])
+                            ->requiresAtLeastOneElement()
+                            ->scalarPrototype()->end()
+                        ->end()
                     ->end()
                 ->end()
             ->end()
@@ -192,35 +200,6 @@ class Configuration implements ConfigurationInterface
     /**
      * @param NodeBuilder $nodeBuilder
      */
-    protected function addExpStatCodesLeaf(NodeBuilder $nodeBuilder): void
-    {
-        $nodeBuilder->arrayNode('expected_status_codes')
-            ->info('List of all status codes that are considered OK, if returned. ' .
-                'If any other status codes received by requests, then request is considered as failed.')
-            ->example([200, 422, 400])
-            ->defaultValue([200, 201, 202, 204])
-            ->requiresAtLeastOneElement()
-            ->scalarPrototype()->end()
-        ->end();
-    }
-
-    /**
-     * @param NodeBuilder $nodeBuilder
-     */
-    protected function addMethodsLeaf(NodeBuilder $nodeBuilder): void
-    {
-        $nodeBuilder->arrayNode('methods')
-            ->info('Allowed methods for requests to send.')
-            ->example(['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'])
-            ->defaultValue(['GET', 'POST'])
-            ->requiresAtLeastOneElement()
-            ->scalarPrototype()->end()
-        ->end();
-    }
-
-    /**
-     * @param NodeBuilder $nodeBuilder
-     */
     protected function addSilentLeaf(NodeBuilder $nodeBuilder): void
     {
         $nodeBuilder->booleanNode('silent')
@@ -263,8 +242,6 @@ class Configuration implements ConfigurationInterface
         $this->addResourceFormatLeaf($nodeBuilder);
         $this->addOnFailLeaf($nodeBuilder);
         $this->addConfigMergeLeaf($nodeBuilder);
-        $this->addExpStatCodesLeaf($nodeBuilder);
-        $this->addMethodsLeaf($nodeBuilder);
         $this->addSilentLeaf($nodeBuilder);
         $this->addForwardedHeadersLeaf($nodeBuilder);
 

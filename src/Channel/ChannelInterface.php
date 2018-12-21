@@ -6,8 +6,8 @@
 
 namespace Deliveryman\Channel;
 
+use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Exception\ChannelException;
-use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 /**
@@ -26,11 +26,11 @@ interface ChannelInterface
     /**
      * Send all queues.
      * Should be optimized for the best performance gains
-     * @param array|RequestInterface[] $queues list of requests or associated map
+     * @param BatchRequest $batchRequest
      * @return ResponseInterface[]|array|null list of responses with keys as they were in request
-     * @throws ChannelException thrown when request send failed unexpectedly and queues must be terminated
+     * @throws ChannelException
      */
-    public function send(array $queues);
+    public function send(BatchRequest $batchRequest);
 
     /**
      * Return all errors that appeared during last session of sending data

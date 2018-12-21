@@ -4,6 +4,7 @@ namespace Deliveryman\Normalizer;
 
 
 use Deliveryman\Entity\BatchRequest;
+use Deliveryman\Entity\HttpQueue\ChannelConfig;
 use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestConfig;
 use Deliveryman\Entity\RequestHeader;
@@ -125,10 +126,11 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
         $object->setFormat($data['format'] ?? null);
         $object->setConfigMerge($data['configMerge'] ?? null);
         $object->setOnFail($data['onFail'] ?? null);
-        $object->setExpectedStatusCodes(isset($data['expectedStatusCodes']) ?
-            (array)$data['expectedStatusCodes'] : null
-        );
         $object->setSilent($data['silent'] ?? null);
+
+        if (isset($data['channel']) && $this->serializer instanceof DenormalizerInterface) {
+            $object->setChannel($this->serializer->denormalize($data['channel'], ChannelConfig::class, $format));
+        }
 
         return $object;
     }
