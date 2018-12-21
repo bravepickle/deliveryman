@@ -50,7 +50,7 @@ class Configuration implements ConfigurationInterface
     protected function addChannelsBranch(NodeBuilder $rootNode): void
     {
         $defaultValues = [ // TODO: update defaults after all options will be reconfigured, add missing
-            'http' => [
+            'http_queue' => [
                 'request_options' => [
                     'allow_redirects' => false,
                     'connect_timeout' => 10,
@@ -67,13 +67,13 @@ class Configuration implements ConfigurationInterface
             ->treatTrueLike($defaultValues)
             ->treatNullLike($defaultValues)
             ->children()
-                ->arrayNode('http')
+                ->arrayNode('http_queue')
                     ->addDefaultsIfNotSet()
                     ->children()
                         ->arrayNode('request_options')
                             ->isRequired()
                             ->info('Request options for Guzzle client library')
-                            ->defaultValue($defaultValues['http']['request_options'])
+                            ->defaultValue($defaultValues['http_queue']['request_options'])
                             ->variablePrototype()->end()
                         ->end()
                         ->arrayNode('sender_headers')

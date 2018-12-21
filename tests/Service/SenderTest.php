@@ -3,7 +3,7 @@
 namespace DeliverymanTest\Service;
 
 
-use Deliveryman\Channel\HttpChannel;
+use Deliveryman\Channel\HttpQueueChannel;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
 use Deliveryman\Entity\Request;
@@ -32,12 +32,12 @@ class SenderTest extends TestCase
     public function testSend(BatchRequest $input, array $responses, BatchResponse $expected)
     {
         $config = ['domains' => ['example.com', 'http://foo.com']];
-        $config['channels']['http']['request_options']['handler'] = HandlerStack::create(new MockHandler($responses));
+        $config['channels']['http_queue']['request_options']['handler'] = HandlerStack::create(new MockHandler($responses));
 
         $configManager = new ConfigManager();
         $configManager->addConfiguration($config);
 
-        $provider = new HttpChannel($configManager);
+        $provider = new HttpQueueChannel($configManager);
 
         $sender = new Sender($provider, $configManager, new BatchRequestValidator($configManager));
         $actual = $sender->send($input);

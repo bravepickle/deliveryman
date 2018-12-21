@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * Send messages over HTTP protocol
  * @package Deliveryman\Channel
  */
-class HttpChannel extends AbstractChannel
+class HttpQueueChannel extends AbstractChannel
 {
     const MSG_REQUEST_FAILED = 'Request failed to complete.';
     const OPT_RECEIVER_HEADERS = 'receiver_headers';
@@ -246,7 +246,7 @@ class HttpChannel extends AbstractChannel
      */
     public function getName(): string
     {
-        return 'http';
+        return 'http_queue';
     }
 
     /**

@@ -35,7 +35,7 @@ class ConfigurationTest extends TestCase
         $this->assertEquals([
             'domains' => ['example.com',], // TODO: rename to format
             'channels' => [
-                'http' => [
+                'http_queue' => [
                     'request_options' => [
                         'allow_redirects' => false,
                         'connect_timeout' => 10,
@@ -83,7 +83,7 @@ class ConfigurationTest extends TestCase
         $this->assertEquals([
             'domains' => ['example.com',],
             'channels' => [
-                'http' => [
+                'http_queue' => [
                     'request_options' => [
                         'allow_redirects' => false,
                         'connect_timeout' => 10,

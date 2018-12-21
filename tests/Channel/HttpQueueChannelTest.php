@@ -7,7 +7,7 @@
 namespace DeliverymanTest\Channel;
 
 
-use Deliveryman\Channel\HttpChannel;
+use Deliveryman\Channel\HttpQueueChannel;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestHeader;
@@ -19,7 +19,7 @@ use function GuzzleHttp\Psr7\stream_for;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 
-class HttpChannelTest extends TestCase
+class HttpQueueChannelTest extends TestCase
 {
     /**
      * @dataProvider basicProvider
@@ -39,7 +39,7 @@ class HttpChannelTest extends TestCase
         $configManager->addConfiguration([
             'domains' => ['http://example.com',],
             'channels' => [
-                'http' => [
+                'http_queue' => [
                     'request_options' => [
                         'handler' => $handler,
                     ],
@@ -48,7 +48,7 @@ class HttpChannelTest extends TestCase
             ],
         ]);
 
-        $channel = new HttpChannel($configManager);
+        $channel = new HttpQueueChannel($configManager);
         $channel->send($input);
 
         $this->assertArrayHasKey('GET_http://example.com/comments', $channel->getOkResponses());
@@ -108,7 +108,7 @@ class HttpChannelTest extends TestCase
         $configManager->addConfiguration([
             'domains' => ['http://example.com',],
             'channels' => [
-                'http' => [
+                'http_queue' => [
                     'request_options' => [
                         'handler' => $handler,
                         'debug' => true,
@@ -119,7 +119,7 @@ class HttpChannelTest extends TestCase
             ],
         ]);
 
-        $channel = new HttpChannel($configManager);
+        $channel = new HttpQueueChannel($configManager);
         $channel->send($input);
         $actualResponses = $channel->getOkResponses();
 
@@ -242,7 +242,7 @@ class HttpChannelTest extends TestCase
         $configManager->addConfiguration([
             'domains' => ['http://example.com',],
             'channels' => [
-                'http' => [
+                'http_queue' => [
                     'request_options' => [
                         'handler' => $handler,
                         'debug' => false,
@@ -253,7 +253,7 @@ class HttpChannelTest extends TestCase
             'on_fail' => 'proceed',
         ]);
 
-        $channel = new HttpChannel($configManager);
+        $channel = new HttpQueueChannel($configManager);
         $channel->send($input);
         $actualResponses = $channel->getOkResponses();
 
