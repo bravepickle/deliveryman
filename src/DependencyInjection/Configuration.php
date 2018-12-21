@@ -79,12 +79,14 @@ class Configuration implements ConfigurationInterface
                         ->arrayNode('sender_headers')
                             ->info('Pass initial request headers from sender to receiver. ' .
                                 'If set to NULL or FALSE then no headers will be forwarded.')
+                            ->beforeNormalization()->castToArray()->end()
                             ->defaultValue([])
                             ->treatNullLike([])
                             ->example(['Origin', 'Cookie', 'Authorization'])
                             ->scalarPrototype()->cannotBeEmpty()->end()
                         ->end()
                         ->arrayNode('receiver_headers')
+                            ->beforeNormalization()->castToArray()->end()
                             ->info('Pass response headers from receiver to sender. If set to TRUE then ' .
                                 'all receiver headers will be displayed to sender inside batch response body')
                             ->defaultValue([])
