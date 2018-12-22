@@ -344,9 +344,9 @@ class HttpQueueChannel extends AbstractChannel
         $generalCfg = $globalConfig ? $globalConfig->getChannel() : null;
         $channelConfig = $this->getChannelConfig();
         switch ($configMerge) {
-            case RequestConfig::CONFIG_MERGE_IGNORE:
+            case RequestConfig::CFG_MERGE_IGNORE:
                 return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
-            case RequestConfig::CONFIG_MERGE_FIRST:
+            case RequestConfig::CFG_MERGE_FIRST:
                 if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
                     return $requestCfg->getExpectedStatusCodes();
                 } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
@@ -355,7 +355,7 @@ class HttpQueueChannel extends AbstractChannel
                     return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
                 }
                 break;
-            case RequestConfig::CONFIG_MERGE_UNIQUE:
+            case RequestConfig::CFG_MERGE_UNIQUE:
                 if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
                     if ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
                         return array_merge(
@@ -398,15 +398,15 @@ class HttpQueueChannel extends AbstractChannel
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
                 switch ($request->getConfig()->getOnFail()) {
-                    case RequestConfig::CONFIG_ON_FAIL_PROCEED:
+                    case RequestConfig::CFG_ON_FAIL_PROCEED:
                         // do nothing
                         break;
 
-                    case RequestConfig::CONFIG_ON_FAIL_ABORT:
+                    case RequestConfig::CFG_ON_FAIL_ABORT:
                         throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
                             ->setRequest($request);
 
-                    case RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE:
+                    case RequestConfig::CFG_ON_FAIL_ABORT_QUEUE:
                         return; // stop chaining requests from queue
 
                     default:
@@ -439,15 +439,15 @@ class HttpQueueChannel extends AbstractChannel
             }
 
             switch ($request->getConfig()->getOnFail()) {
-                case RequestConfig::CONFIG_ON_FAIL_PROCEED:
+                case RequestConfig::CFG_ON_FAIL_PROCEED:
                     $this->chainSendRequest($queue, $client)->wait();
                     break;
 
-                case RequestConfig::CONFIG_ON_FAIL_ABORT:
+                case RequestConfig::CFG_ON_FAIL_ABORT:
                     throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
                         ->setRequest($request);
 
-                case RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE:
+                case RequestConfig::CFG_ON_FAIL_ABORT_QUEUE:
                     return; // stop chaining requests from queue
 
                 default:
@@ -466,8 +466,8 @@ class HttpQueueChannel extends AbstractChannel
         return function (ResponseInterface $response) use ($request) {
             if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request)) &&
                 in_array($this->getOnFailWithFallback($request), [
-                    RequestConfig::CONFIG_ON_FAIL_ABORT,
-                    RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE,
+                    RequestConfig::CFG_ON_FAIL_ABORT,
+                    RequestConfig::CFG_ON_FAIL_ABORT_QUEUE,
                 ])
             ) {
                 // todo: save failed objects and succeeded responses in separate data sets
@@ -495,13 +495,13 @@ class HttpQueueChannel extends AbstractChannel
             }
 
             switch ($this->getOnFailWithFallback($request)) {
-                case RequestConfig::CONFIG_ON_FAIL_ABORT:
-                case RequestConfig::CONFIG_ON_FAIL_ABORT_QUEUE:
+                case RequestConfig::CFG_ON_FAIL_ABORT:
+                case RequestConfig::CFG_ON_FAIL_ABORT_QUEUE:
                     throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
                         ->setRequest($request);
                     break;
 
-                case RequestConfig::CONFIG_ON_FAIL_PROCEED:
+                case RequestConfig::CFG_ON_FAIL_PROCEED:
                     // do nothing
                     break;
 

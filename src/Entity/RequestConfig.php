@@ -8,13 +8,13 @@ use Deliveryman\Normalizer\NormalizableInterface;
 
 class RequestConfig implements NormalizableInterface
 {
-    const CONFIG_MERGE_FIRST = 'first';
-    const CONFIG_MERGE_UNIQUE = 'unique';
-    const CONFIG_MERGE_IGNORE = 'ignore';
+    const CFG_MERGE_FIRST = 'first';
+    const CFG_MERGE_UNIQUE = 'unique';
+    const CFG_MERGE_IGNORE = 'ignore';
 
-    const CONFIG_ON_FAIL_ABORT = 'abort';
-    const CONFIG_ON_FAIL_PROCEED = 'proceed';
-    const CONFIG_ON_FAIL_ABORT_QUEUE = 'abort-queue';
+    const CFG_ON_FAIL_ABORT = 'abort';
+    const CFG_ON_FAIL_PROCEED = 'proceed';
+    const CFG_ON_FAIL_ABORT_QUEUE = 'abort-queue';
 
     /**
      * Configs merge strategy per request

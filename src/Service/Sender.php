@@ -255,10 +255,10 @@ class Sender
                 $appConfig['config_merge'];
 
             switch ($cfgMergeStrategy) {
-                case RequestConfig::CONFIG_MERGE_FIRST: return $this->mergeRequestConfigDefaults($appConfig, $requestCfg);
-                case RequestConfig::CONFIG_MERGE_UNIQUE:
+                case RequestConfig::CFG_MERGE_FIRST: return $this->mergeRequestConfigDefaults($appConfig, $requestCfg);
+                case RequestConfig::CFG_MERGE_UNIQUE:
                     return $this->mergeRequestConfigScopes($appConfig, $requestCfg, $generalCfg, $cfgMergeStrategy);
-                case RequestConfig::CONFIG_MERGE_IGNORE: return $this->genDefaultConfig($appConfig);
+                case RequestConfig::CFG_MERGE_IGNORE: return $this->genDefaultConfig($appConfig);
                 default:
                     throw new SerializationException('Unexpected config merge strategy type: ' .
                         $cfgMergeStrategy
