@@ -84,7 +84,7 @@ class HttpQueueChannelTest extends TestCase
         $expected = [
             'statusCode' => 404,
             'headers' => ['X-API' => ['test-server']],
-            'data' => '{"error": "Not Found!"}',
+            'data' => ['error' => 'Not Found!'],
         ];
 
         $response = new Response($expected['statusCode'], ['X-API' => 'test-server'], stream_for('{"error": "Not Found!"}'));
@@ -130,36 +130,41 @@ class HttpQueueChannelTest extends TestCase
 
         $this->assertArrayHasKey($expected[0]['id'], $channel->getOkResponses());
 
-        /** @var Response $actualResponse */
+        /** @var ResponseData $actualResponse */
         $actualResponse = $actualResponses[$expected[0]['id']];
 
         $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
 
+//        echo '<pre>';
+//        print_r($expected[0]);
+//        print_r($actualResponse);
+//        die("\n" . __METHOD__ . ":" . __FILE__ . ":" . __LINE__ . "\n");
+
         $this->assertEquals($expected[0]['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
         $this->assertEquals($expected[0]['headers'], $actualResponse->getHeaders(), 'Headers differ');
-        $this->assertEquals($expected[0]['data'], $actualResponse->getBody()->getContents(), 'Body differs');
+        $this->assertEquals($expected[0]['data'], $actualResponse->getData(), 'Body differs');
 
         $this->assertArrayHasKey($expected[1]['id'], $actualResponses);
 
-        /** @var Response $actualResponse */
+        /** @var ResponseData $actualResponse */
         $actualResponse = $actualResponses[$expected[1]['id']];
 
-        $this->assertTrue($actualResponse instanceof ResponseInterface, 'Response should be PSR-7 interface.');
+        $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
 
         $this->assertEquals($expected[1]['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
         $this->assertEquals($expected[1]['headers'], $actualResponse->getHeaders(), 'Headers differ');
-        $this->assertEquals($expected[1]['data'], $actualResponse->getBody()->getContents(), 'Body differs');
+        $this->assertEquals($expected[1]['data'], $actualResponse->getData(), 'Body differs');
 
         $this->assertArrayHasKey($expected[2]['id'], $actualResponses);
 
-        /** @var Response $actualResponse */
+        /** @var ResponseData $actualResponse */
         $actualResponse = $actualResponses[$expected[2]['id']];
 
-        $this->assertTrue($actualResponse instanceof ResponseInterface, 'Response should be PSR-7 interface.');
+        $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
 
         $this->assertEquals($expected[2]['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
         $this->assertEquals($expected[2]['headers'], $actualResponse->getHeaders(), 'Headers differ');
-        $this->assertEquals($expected[2]['data'], $actualResponse->getBody()->getContents(), 'Body differs');
+        $this->assertEquals($expected[2]['data'], $actualResponse->getData(), 'Body differs');
     }
 
     /**
@@ -198,27 +203,31 @@ class HttpQueueChannelTest extends TestCase
             [
                 'id' => 'post_comments',
                 'statusCode' => 400,
-                'headers' => ['Content-Type' => ['plain/text; charset=utf8']],
+                '_headers' => ['Content-Type' => ['plain/text; charset=utf8']],
+                'headers' => [(new RequestHeader())->setName('Content-Type')->setValue('plain/text; charset=utf8')],
                 'data' => 'Invalid input format',
             ],
             [
                 'id' => 'GET_http://example.com/users',
                 'statusCode' => 200,
-                'headers' => ['Content-Type' => ['application/json']],
-                'data' => '{"success": true}',
+                '_headers' => ['Content-Type' => ['application/json']],
+                'headers' => [(new RequestHeader())->setName('Content-Type')->setValue('application/json')],
+                'data' => ['success' => true],
+                '_data' => '{"success":true}',
             ],
             [
                 'id' => 'head_comments',
                 'statusCode' => 301,
-                'headers' => ['Location' => ['http://www.example.com/comments/1']],
+                '_headers' => ['Location' => ['http://www.example.com/comments/1']],
+                'headers' => [(new RequestHeader())->setName('Location')->setValue('http://www.example.com/comments/1')],
                 'data' => '',
             ],
         ];
 
         $responses = [
-            new Response($expected[0]['statusCode'], $expected[0]['headers'], stream_for($expected[0]['data'])),
-            new Response($expected[1]['statusCode'], $expected[1]['headers'], stream_for($expected[1]['data'])),
-            new Response($expected[2]['statusCode'], $expected[2]['headers'], stream_for($expected[2]['data'])),
+            new Response($expected[0]['statusCode'], $expected[0]['_headers'], stream_for($expected[0]['data'])),
+            new Response($expected[1]['statusCode'], $expected[1]['_headers'], stream_for($expected[1]['_data'])),
+            new Response($expected[2]['statusCode'], $expected[2]['_headers'], stream_for($expected[2]['data'])),
         ];
 
         return [
@@ -262,36 +271,36 @@ class HttpQueueChannelTest extends TestCase
 
         $this->assertArrayHasKey($expected[0]['id'], $actualResponses);
 
-        /** @var Response $actualResponse */
+        /** @var ResponseData $actualResponse */
         $actualResponse = $actualResponses[$expected[0]['id']];
 
         $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
 
         $this->assertEquals($expected[0]['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
         $this->assertEquals($expected[0]['headers'], $actualResponse->getHeaders(), 'Headers differ');
-        $this->assertEquals($expected[0]['data'], $actualResponse->getBody()->getContents(), 'Body differs');
+        $this->assertEquals($expected[0]['data'], $actualResponse->getData(), 'Body differs');
 
         $this->assertArrayHasKey($expected[1]['id'], $actualResponses);
 
-        /** @var Response $actualResponse */
+        /** @var ResponseData $actualResponse */
         $actualResponse = $actualResponses[$expected[1]['id']];
 
-        $this->assertTrue($actualResponse instanceof ResponseInterface, 'Response should be PSR-7 interface.');
+        $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
 
         $this->assertEquals($expected[1]['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
         $this->assertEquals($expected[1]['headers'], $actualResponse->getHeaders(), 'Headers differ');
-        $this->assertEquals($expected[1]['data'], $actualResponse->getBody()->getContents(), 'Body differs');
+        $this->assertEquals($expected[1]['data'], $actualResponse->getData(), 'Body differs');
 
         $this->assertArrayHasKey($expected[2]['id'], $actualResponses);
 
-        /** @var Response $actualResponse */
+        /** @var ResponseData $actualResponse */
         $actualResponse = $actualResponses[$expected[2]['id']];
 
-        $this->assertTrue($actualResponse instanceof ResponseInterface, 'Response should be PSR-7 interface.');
+        $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
 
         $this->assertEquals($expected[2]['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
         $this->assertEquals($expected[2]['headers'], $actualResponse->getHeaders(), 'Headers differ');
-        $this->assertEquals($expected[2]['data'], $actualResponse->getBody()->getContents(), 'Body differs');
+        $this->assertEquals($expected[2]['data'], $actualResponse->getData(), 'Body differs');
     }
 
     /**
@@ -330,27 +339,31 @@ class HttpQueueChannelTest extends TestCase
             [
                 'id' => 'post_comments',
                 'statusCode' => 400,
-                'headers' => ['Content-Type' => ['plain/text; utf8']],
+                '_headers' => ['Content-Type' => ['plain/text; utf8']],
+                'headers' => [(new RequestHeader())->setName('Content-Type')->setValue('plain/text; utf8')],
                 'data' => 'Invalid input format',
             ],
             [
                 'id' => 'GET_http://example.com/users/2',
                 'statusCode' => 200,
-                'headers' => ['Content-Type' => ['application/json']],
-                'data' => '{"success": true}',
+                '_headers' => ['Content-Type' => ['application/json']],
+                'headers' => [(new RequestHeader())->setName('Content-Type')->setValue('application/json')],
+                'data' => ['success' => true],
+                '_data' => '{"success":true}',
             ],
             [
                 'id' => 'head_comments',
                 'statusCode' => 301,
-                'headers' => ['Location' => ['http://www.example.com/comments/1']],
+                '_headers' => ['Location' => ['http://www.example.com/comments/1']],
+                'headers' => [(new RequestHeader())->setName('Location')->setValue('http://www.example.com/comments/1')],
                 'data' => '',
             ],
         ];
 
         $responses = [
-            new Response($expected[0]['statusCode'], $expected[0]['headers'], stream_for($expected[0]['data'])),
-            new Response($expected[1]['statusCode'], $expected[1]['headers'], stream_for($expected[1]['data'])),
-            new Response($expected[2]['statusCode'], $expected[2]['headers'], stream_for($expected[2]['data'])),
+            new Response($expected[0]['statusCode'], $expected[0]['_headers'], stream_for($expected[0]['data'])),
+            new Response($expected[1]['statusCode'], $expected[1]['_headers'], stream_for($expected[1]['_data'])),
+            new Response($expected[2]['statusCode'], $expected[2]['_headers'], stream_for($expected[2]['data'])),
         ];
 
         return [
