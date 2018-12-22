@@ -1,0 +1,52 @@
+sendProvider:
+    -
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+
+        input:
+            data:
+                - { uri: 'http://example.com/ask-something', id: ask-something }
+                - { uri: 'http://example.com/do-something', method: PUT, data: encoded_text, req: [ask-something] }
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                data: '{"success":true}'
+            -   statusCode: 204
+                headers:
+                    Content-Type: [application/json]
+                data: null
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/ask-something'
+                headers:
+                    User-Agent: [testing/1.0]
+                data: ''
+            -   method: PUT
+                uri: 'http://example.com/do-something'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Content-Length: ['12']
+                data: encoded_text
+
+        output:
+            data:
+                ask-something:
+                    id: ask-something
+                    headers: [{ name: Content-Type, value: application/json }]
+                    statusCode: 200
+                    data: { success: true }
+                'PUT_http://example.com/do-something':
+                    id: 'PUT_http://example.com/do-something'
+                    headers: [{ name: Content-Type, value: application/json }]
+                    statusCode: 204
+                    data: null
+            status: ok
+            errors: null
+            failed: null

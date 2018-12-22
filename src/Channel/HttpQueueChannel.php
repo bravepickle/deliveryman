@@ -126,7 +126,7 @@ class HttpQueueChannel extends AbstractChannel
     public function send(BatchRequest $batchRequest)
     {
         $this->batchRequest = $batchRequest;
-        $queues = $batchRequest->getQueues();
+        $queues = $batchRequest->getData();
         if ($this->hasSingleRequest($queues)) {
             $request = $this->getFirstRequest($queues);
             $this->sendRequest($request);
@@ -620,31 +620,6 @@ class HttpQueueChannel extends AbstractChannel
         }
 
         return $targetResponse;
-
-//        if (!$requestConfig->getSilent()) {
-//            $succeededResp[$targetResponse->getId()] = $targetResponse;
-//        }
-
-//        foreach ($channel->getFailedResponses() as $id => $srcResponse) {
-//            $requestConfig = $requests[$id]->getConfig();
-//
-//            $targetResponse = new Response();
-//            $targetResponse->setId($id);
-//            $targetResponse->setStatusCode($srcResponse->getStatusCode());
-//            $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
-//
-//            $this->genResponseBody($requestConfig->getFormat(), $srcResponse, $targetResponse);
-//
-//            if ($this->dispatcher) {
-//                $event = new BuildResponseEvent($targetResponse, $srcResponse, $requestConfig);
-//                $this->dispatcher->dispatch(BuildResponseEvent::EVENT_FAILED_POST_BUILD, $event);
-//                $targetResponse = $event->getTargetResponse();
-//            }
-//
-//            $failedResp[$targetResponse->getId()] = $targetResponse;
-//        }
-//
-//        return [$succeededResp, $failedResp];
     }
 
     /**

@@ -217,8 +217,8 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
 
         $object->setConfig($requestConfig);
 
-        if (!empty($data['queues'])) {
-            $object->setQueues($this->denormalizeQueues($data['queues'], $format));
+        if (!empty($data['data'])) {
+            $object->setData($this->denormalizeQueues($data['data'], $format));
         }
 
         return $object;
@@ -233,7 +233,7 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
     protected function denormalizeQueues($items, $format)
     {
         if (!is_array($items)) {
-            throw new MappingException('Field "queues" must contain an array.');
+            throw new MappingException('Field "data" must contain an array.');
         }
 
         $class = Request::class;
@@ -242,7 +242,7 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
 
         foreach ($items as $queue) {
             if (!is_array($queue)) {
-                throw new InvalidArgumentException('Field "queues" must contain an array of requests.');
+                throw new InvalidArgumentException('Field "data" must contain an array of requests.');
             } elseif (array_key_exists('uri', $queue)) {
                 $queue = [$queue]; // wrap single request with array
             }

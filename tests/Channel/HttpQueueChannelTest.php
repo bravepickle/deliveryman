@@ -78,7 +78,7 @@ class HttpQueueChannelTest extends TestCase
             ]
         ];
 
-        $request = (new BatchRequest())->setQueues($queues);
+        $request = (new BatchRequest())->setData($queues);
 
         $expected = [
             'statusCode' => 404,
@@ -196,7 +196,7 @@ class HttpQueueChannelTest extends TestCase
             ],
         ];
 
-        $request = (new BatchRequest())->setQueues($queues);
+        $request = (new BatchRequest())->setData($queues);
 
         $expected = [
             [
@@ -332,7 +332,7 @@ class HttpQueueChannelTest extends TestCase
             ],
         ];
 
-        $request = (new BatchRequest())->setQueues($queues);
+        $request = (new BatchRequest())->setData($queues);
 
         $expected = [
             [

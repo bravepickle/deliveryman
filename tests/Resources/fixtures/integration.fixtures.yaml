@@ -8,7 +8,7 @@ batchRequestProvider:
                     request_options: { debug: false, allow_redirects: false, headers: { User-Agent: [testing/1.0] } }
 
         input:
-            queues:
+            data:
                 -   - { uri: 'http://example.com/ask-something', id: ask-something }
                     - { uri: 'http://example.com/do-something', method: PUT, data: encoded_text }
 
@@ -60,7 +60,7 @@ configProvider:
                 http_queue:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
         input:
-            queues:
+            data:
                 -   uri: 'http://example.com/ask-something'
                     id: '#45'
         responses:
@@ -88,7 +88,7 @@ configProvider:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
                     expected_status_codes: [200]
         input:
-            queues:
+            data:
                 -   uri: 'http://example.com/ask-something'
                     id: '#45'
                 -   uri: 'http://example.com/be-something'
@@ -136,7 +136,7 @@ configProvider:
                 http_queue:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
         input:
-            queues:
+            data:
                 -   - { uri: 'http://example.com/foo', id: '#45', config: { silent: true } }
                     - { uri: 'http://example.com/bar', id: '#46' }
         responses:
@@ -177,7 +177,7 @@ configProvider:
                 http_queue:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
         input:
-            queues:
+            data:
                 -   - { uri: 'http://example.com/leslie', id: 'leslie', headers: [{ name: 'X-Auth', value: 'secured_key' }], method: 'HEAD' }
         responses:
             -   statusCode: 401
@@ -218,7 +218,7 @@ clientRequestProvider:
             headers:
                 'X-Bar': 'unused header'
                 'X-Foo': 'jeronimo'
-            queues:
+            data:
                 - { uri: 'http://example.com/user', id: 'user', headers: [{ name: 'X-Auth', value: 'secured_key' }]}
         responses:
             -   statusCode: 200

@@ -72,8 +72,8 @@ class Sender
     public function send(BatchRequest $batchRequest)
     {
         $this->channel->clear();
-        if (!$batchRequest->getQueues()) {
-            throw new SendingException('No queues with requests specified to process.');
+        if (!$batchRequest->getData()) {
+            throw new SendingException('No data with requests specified to process.');
         }
 
         $channel = $this->channel;
@@ -192,7 +192,7 @@ class Sender
     protected function mergeConfigsPerRequest(BatchRequest $batchRequest): array
     {
         $appConfig = $this->getMasterConfig();
-        $requestsMap = $this->mapRequestIds($batchRequest->getQueues());
+        $requestsMap = $this->mapRequestIds($batchRequest->getData());
         $map = [];
         /** @var Request $request */
         foreach ($requestsMap as $id => $request) {

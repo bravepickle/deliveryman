@@ -24,7 +24,7 @@ interface ChannelInterface
     public function getName(): string;
 
     /**
-     * Send all queues.
+     * Send all data.
      * Should be optimized for the best performance gains
      * @param BatchRequest $batchRequest
      * @throws ChannelException

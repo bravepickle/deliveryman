@@ -44,7 +44,7 @@ paths:
                     application/json:
                         schema:
                             $ref: '#/components/schemas/BatchRequest'
-                description: List of request queues and their configurations to execute
+                description: List of request data and their configurations to execute
                 required: true
 externalDocs:
     description: Find out more
@@ -65,7 +65,7 @@ components:
             properties:
                 config:
                     $ref: '#/components/schemas/RequestConfig'
-                queues:
+                data:
                     type: array
                     items:
                         $ref: '#/components/schemas/Queue'
@@ -188,7 +188,7 @@ components:
                     description: Value of the HTTP request header
         Response:
             type: object
-            description: Response data returned by request from queues.
+            description: Response data returned by requests.
             properties:
                 id:
                     type: string

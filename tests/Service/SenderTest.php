@@ -52,7 +52,7 @@ class SenderTest extends TestCase
     {
         $reqId = 'test_get';
         $batchRequest = new BatchRequest();
-        $batchRequest->setQueues([
+        $batchRequest->setData([
             [
                 (new Request())->setId($reqId)->setUri('http://example.com'),
             ],

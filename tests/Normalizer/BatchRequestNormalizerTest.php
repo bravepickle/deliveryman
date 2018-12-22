@@ -63,7 +63,7 @@ class BatchRequestNormalizerTest extends TestCase
                         'format' => null,
                         'channel' => null,
                     ],
-                    'queues' => null,
+                    'data' => null,
                 ],
             ],
             [
@@ -83,12 +83,12 @@ class BatchRequestNormalizerTest extends TestCase
                         'format' => null,
                         'channel' => ['expectedStatusCodes' => [200],]
                     ],
-                    'queues' => null,
+                    'data' => null,
                 ],
             ],
             [
                 'input' => [
-                    'queues' => [
+                    'data' => [
                         [ // queue #1
                             [ // request #1
                                 'id' => 'read_book',
@@ -121,7 +121,7 @@ class BatchRequestNormalizerTest extends TestCase
                 ],
                 'expected' => [
                     'config' => null,
-                    'queues' => [
+                    'data' => [
                         [
                             [
                                 'id' => 'read_book',

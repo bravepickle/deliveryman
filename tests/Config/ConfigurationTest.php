@@ -44,7 +44,18 @@ class ConfigurationTest extends TestCase
                     ],
                     'sender_headers' => [],
                     'receiver_headers' => [],
-                    'expected_status_codes' => [200, 201, 202, 204], // TODO: move me to channel
+                    'expected_status_codes' => [200, 201, 202, 204],
+                ],
+                'http_graph' => [
+                    'request_options' => [
+                        'allow_redirects' => false,
+                        'connect_timeout' => 10,
+                        'timeout' => 30,
+                        'debug' => false,
+                    ],
+                    'sender_headers' => [],
+                    'receiver_headers' => [],
+                    'expected_status_codes' => [200, 201, 202, 204],
                 ],
             ],
             'batch_format' => 'json', // TODO: rename to format
@@ -84,6 +95,17 @@ class ConfigurationTest extends TestCase
             'domains' => ['example.com',],
             'channels' => [
                 'http_queue' => [
+                    'request_options' => [
+                        'allow_redirects' => false,
+                        'connect_timeout' => 10,
+                        'timeout' => 30,
+                        'debug' => false,
+                    ],
+                    'sender_headers' => [],
+                    'receiver_headers' => [],
+                    'expected_status_codes' => [200, 201, 202, 204],
+                ],
+                'http_graph' => [
                     'request_options' => [
                         'allow_redirects' => false,
                         'connect_timeout' => 10,

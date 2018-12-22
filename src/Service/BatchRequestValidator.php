@@ -62,7 +62,7 @@ class BatchRequestValidator
      */
     protected function validateQueues(BatchRequest $batchRequest, array &$errors)
     {
-        if (empty($batchRequest->getQueues())) {
+        if (empty($batchRequest->getData())) {
             $errors[self::GENERAL_ERROR_PATH][] = self::MSG_EMPTY_QUEUES;
         }
     }
@@ -74,7 +74,7 @@ class BatchRequestValidator
      */
     protected function validateRequests(BatchRequest $batchRequest, array &$errors)
     {
-        if (!$batchRequest->getQueues()) {
+        if (!$batchRequest->getData()) {
             return; // validate elsewhere
         }
 
@@ -92,7 +92,7 @@ class BatchRequestValidator
         }
 
         $aliases = [];
-        foreach ($batchRequest->getQueues() as $queue) {
+        foreach ($batchRequest->getData() as $queue) {
             /** @var Request $request */
             foreach ($queue as $request) {
                 $this->validateUri($request, $allowedHostNames, $allowedBaseUris, $errors);

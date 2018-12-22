@@ -18,11 +18,10 @@ class BatchRequest implements NormalizableInterface
     protected $config;
 
     /**
-     * Array of arrays that represent requests queue sequence
-     * with multiple requests
+     * Container for batch request data
      * @var array|null
      */
-    protected $queues;
+    protected $data;
 
     /**
      * @return RequestConfig
@@ -46,18 +45,18 @@ class BatchRequest implements NormalizableInterface
     /**
      * @return array|null
      */
-    public function getQueues(): ?array
+    public function getData(): ?array
     {
-        return $this->queues;
+        return $this->data;
     }
 
     /**
-     * @param array|null $queues
+     * @param array|null $data
      * @return BatchRequest
      */
-    public function setQueues(?array $queues): BatchRequest
+    public function setData(?array $data): BatchRequest
     {
-        $this->queues = $queues;
+        $this->data = $data;
 
         return $this;
     }
