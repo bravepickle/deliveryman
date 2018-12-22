@@ -1,0 +1,45 @@
+buildNodesFromRequestsProvider:
+    - input:
+          - { id: A, req: [B] }
+          - { id: B, req: [] }
+      output:
+          A: {successors: [B], predecessors: []}
+          B: {successors: [], predecessors: [A]}
+
+    - input:
+          - { id: A, req: [B, C] }
+          - { id: B, req: [] }
+          - { id: C, req: [] }
+      output:
+          A: {successors: [B, C], predecessors: []}
+          B: {successors: [], predecessors: [A]}
+          C: {successors: [], predecessors: [A]}
+
+    - input:
+          - { id: A, req: [B, C] }
+          - { id: B, req: [C] }
+          - { id: C, req: [] }
+      output:
+          A: {successors: [B, C], predecessors: []}
+          B: {successors: [C], predecessors: [A]}
+          C: {successors: [], predecessors: [A, B]}
+
+    - input:
+          - { id: A, req: [] }
+          - { id: B, req: [C] }
+          - { id: C, req: [A] }
+      output:
+          A: {successors: [], predecessors: [C]}
+          B: {successors: [C], predecessors: []}
+          C: {successors: [A], predecessors: [B]}
+
+    - input:
+          - { id: A, req: [B, C] }
+          - { id: B, req: [C, D] }
+          - { id: C, req: [] }
+          - { id: D, req: [] }
+      output:
+          A: {successors: [B, C], predecessors: []}
+          B: {successors: [C, D], predecessors: [A]}
+          C: {successors: [], predecessors: [A, B]}
+          D: {successors: [], predecessors: [B]}
