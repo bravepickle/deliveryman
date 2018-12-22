@@ -10,11 +10,7 @@ namespace Deliveryman\Entity;
  * Class ResponseItemInterface sets requirements for returned items for batch response body
  * @package Deliveryman\Entity
  */
-interface ResponseItemInterface
+interface ResponseItemInterface extends IdentifiableInterface
 {
-    /**
-     * Return identifier of response
-     * @return mixed
-     */
-    public function getId();
+
 }

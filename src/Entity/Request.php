@@ -5,7 +5,7 @@ namespace Deliveryman\Entity;
 
 use Deliveryman\Normalizer\NormalizableInterface;
 
-class Request implements NormalizableInterface
+class Request implements NormalizableInterface, IdentifiableInterface
 {
     /**
      * Identifier for given request for referencing aka alias
@@ -33,7 +33,7 @@ class Request implements NormalizableInterface
 
     /**
      * List of requests to send together with request with disregard to config merging strategy
-     * @var RequestHeader[]|null|array
+     * @var HttpHeader[]|null|array
      */
     protected $headers;
 
@@ -146,7 +146,7 @@ class Request implements NormalizableInterface
     }
 
     /**
-     * @return array|RequestHeader[]|null
+     * @return array|HttpHeader[]|null
      */
     public function getHeaders()
     {
@@ -154,7 +154,7 @@ class Request implements NormalizableInterface
     }
 
     /**
-     * @param array|RequestHeader[]|null $headers
+     * @param array|HttpHeader[]|null $headers
      * @return Request
      */
     public function setHeaders($headers)

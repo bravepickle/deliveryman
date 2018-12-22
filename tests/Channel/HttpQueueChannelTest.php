@@ -9,9 +9,9 @@ namespace DeliverymanTest\Channel;
 
 use Deliveryman\Channel\HttpQueueChannel;
 use Deliveryman\Entity\BatchRequest;
-use Deliveryman\Entity\HttpQueue\ResponseData;
+use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Entity\Request;
-use Deliveryman\Entity\RequestHeader;
+use Deliveryman\Entity\HttpHeader;
 use Deliveryman\Entity\ResponseItemInterface;
 use Deliveryman\Service\ConfigManager;
 use GuzzleHttp\Handler\MockHandler;
@@ -19,7 +19,6 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use function GuzzleHttp\Psr7\stream_for;
 use PHPUnit\Framework\TestCase;
-use Psr\Http\Message\ResponseInterface;
 
 class HttpQueueChannelTest extends TestCase
 {
@@ -55,7 +54,7 @@ class HttpQueueChannelTest extends TestCase
 
         $this->assertArrayHasKey('GET_http://example.com/comments', $channel->getOkResponses());
 
-        /** @var ResponseData $actualResponse */
+        /** @var HttpResponse $actualResponse */
         $actualResponse = $channel->getOkResponses()['GET_http://example.com/comments'];
 
         $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
@@ -74,7 +73,7 @@ class HttpQueueChannelTest extends TestCase
                 ->setMethod('GET')
                 ->setUri('http://example.com/comments')
                 ->setHeaders([
-                    (new RequestHeader())->setName('X-API')->setValue('test-server')
+                    (new HttpHeader())->setName('X-API')->setValue('test-server')
                 ])
             ]
         ];
@@ -130,7 +129,7 @@ class HttpQueueChannelTest extends TestCase
 
         $this->assertArrayHasKey($expected[0]['id'], $channel->getOkResponses());
 
-        /** @var ResponseData $actualResponse */
+        /** @var HttpResponse $actualResponse */
         $actualResponse = $actualResponses[$expected[0]['id']];
 
         $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
@@ -146,7 +145,7 @@ class HttpQueueChannelTest extends TestCase
 
         $this->assertArrayHasKey($expected[1]['id'], $actualResponses);
 
-        /** @var ResponseData $actualResponse */
+        /** @var HttpResponse $actualResponse */
         $actualResponse = $actualResponses[$expected[1]['id']];
 
         $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
@@ -157,7 +156,7 @@ class HttpQueueChannelTest extends TestCase
 
         $this->assertArrayHasKey($expected[2]['id'], $actualResponses);
 
-        /** @var ResponseData $actualResponse */
+        /** @var HttpResponse $actualResponse */
         $actualResponse = $actualResponses[$expected[2]['id']];
 
         $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
@@ -191,8 +190,8 @@ class HttpQueueChannelTest extends TestCase
                 ->setUri('http://example.com/users')
                 ->setQuery(['uid' => 'zest'])
                 ->setHeaders([
-                    (new RequestHeader())->setName('X-API-Key')->setValue('test1'),
-                    (new RequestHeader())->setName('X-API-Key')->setValue('test2')
+                    (new HttpHeader())->setName('X-API-Key')->setValue('test1'),
+                    (new HttpHeader())->setName('X-API-Key')->setValue('test2')
                 ])
             ],
         ];
@@ -204,14 +203,14 @@ class HttpQueueChannelTest extends TestCase
                 'id' => 'post_comments',
                 'statusCode' => 400,
                 '_headers' => ['Content-Type' => ['plain/text; charset=utf8']],
-                'headers' => [(new RequestHeader())->setName('Content-Type')->setValue('plain/text; charset=utf8')],
+                'headers' => [(new HttpHeader())->setName('Content-Type')->setValue('plain/text; charset=utf8')],
                 'data' => 'Invalid input format',
             ],
             [
                 'id' => 'GET_http://example.com/users',
                 'statusCode' => 200,
                 '_headers' => ['Content-Type' => ['application/json']],
-                'headers' => [(new RequestHeader())->setName('Content-Type')->setValue('application/json')],
+                'headers' => [(new HttpHeader())->setName('Content-Type')->setValue('application/json')],
                 'data' => ['success' => true],
                 '_data' => '{"success":true}',
             ],
@@ -219,7 +218,7 @@ class HttpQueueChannelTest extends TestCase
                 'id' => 'head_comments',
                 'statusCode' => 301,
                 '_headers' => ['Location' => ['http://www.example.com/comments/1']],
-                'headers' => [(new RequestHeader())->setName('Location')->setValue('http://www.example.com/comments/1')],
+                'headers' => [(new HttpHeader())->setName('Location')->setValue('http://www.example.com/comments/1')],
                 'data' => '',
             ],
         ];
@@ -271,7 +270,7 @@ class HttpQueueChannelTest extends TestCase
 
         $this->assertArrayHasKey($expected[0]['id'], $actualResponses);
 
-        /** @var ResponseData $actualResponse */
+        /** @var HttpResponse $actualResponse */
         $actualResponse = $actualResponses[$expected[0]['id']];
 
         $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
@@ -282,7 +281,7 @@ class HttpQueueChannelTest extends TestCase
 
         $this->assertArrayHasKey($expected[1]['id'], $actualResponses);
 
-        /** @var ResponseData $actualResponse */
+        /** @var HttpResponse $actualResponse */
         $actualResponse = $actualResponses[$expected[1]['id']];
 
         $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
@@ -293,7 +292,7 @@ class HttpQueueChannelTest extends TestCase
 
         $this->assertArrayHasKey($expected[2]['id'], $actualResponses);
 
-        /** @var ResponseData $actualResponse */
+        /** @var HttpResponse $actualResponse */
         $actualResponse = $actualResponses[$expected[2]['id']];
 
         $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
@@ -322,8 +321,8 @@ class HttpQueueChannelTest extends TestCase
                     ->setUri('http://example.com/users/2')
                     ->setQuery(['uid' => 'zest'])
                     ->setHeaders([
-                        (new RequestHeader())->setName('X-API-Key')->setValue('test1'),
-                        (new RequestHeader())->setName('X-API-Key')->setValue('test2')
+                        (new HttpHeader())->setName('X-API-Key')->setValue('test1'),
+                        (new HttpHeader())->setName('X-API-Key')->setValue('test2')
                     ]),
 
                 (new Request())
@@ -340,14 +339,14 @@ class HttpQueueChannelTest extends TestCase
                 'id' => 'post_comments',
                 'statusCode' => 400,
                 '_headers' => ['Content-Type' => ['plain/text; utf8']],
-                'headers' => [(new RequestHeader())->setName('Content-Type')->setValue('plain/text; utf8')],
+                'headers' => [(new HttpHeader())->setName('Content-Type')->setValue('plain/text; utf8')],
                 'data' => 'Invalid input format',
             ],
             [
                 'id' => 'GET_http://example.com/users/2',
                 'statusCode' => 200,
                 '_headers' => ['Content-Type' => ['application/json']],
-                'headers' => [(new RequestHeader())->setName('Content-Type')->setValue('application/json')],
+                'headers' => [(new HttpHeader())->setName('Content-Type')->setValue('application/json')],
                 'data' => ['success' => true],
                 '_data' => '{"success":true}',
             ],
@@ -355,7 +354,7 @@ class HttpQueueChannelTest extends TestCase
                 'id' => 'head_comments',
                 'statusCode' => 301,
                 '_headers' => ['Location' => ['http://www.example.com/comments/1']],
-                'headers' => [(new RequestHeader())->setName('Location')->setValue('http://www.example.com/comments/1')],
+                'headers' => [(new HttpHeader())->setName('Location')->setValue('http://www.example.com/comments/1')],
                 'data' => '',
             ],
         ];

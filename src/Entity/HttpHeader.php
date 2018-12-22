@@ -9,7 +9,7 @@ use Deliveryman\Normalizer\NormalizableInterface;
  * Contains headers passed within batch request body
  * @package Deliveryman\Entity
  */
-class RequestHeader implements NormalizableInterface
+class HttpHeader implements NormalizableInterface
 {
     /**
      * Header name
@@ -44,9 +44,9 @@ class RequestHeader implements NormalizableInterface
 
     /**
      * @param string|null $name
-     * @return RequestHeader
+     * @return HttpHeader
      */
-    public function setName(?string $name): RequestHeader
+    public function setName(?string $name): HttpHeader
     {
         $this->name = $name;
 
@@ -63,7 +63,7 @@ class RequestHeader implements NormalizableInterface
 
     /**
      * @param mixed $value
-     * @return RequestHeader
+     * @return HttpHeader
      */
     public function setValue($value)
     {

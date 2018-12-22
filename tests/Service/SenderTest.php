@@ -7,7 +7,7 @@ use Deliveryman\Channel\HttpQueueChannel;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
 use Deliveryman\Entity\Request;
-use Deliveryman\Entity\RequestHeader;
+use Deliveryman\Entity\HttpHeader;
 use Deliveryman\Service\BatchRequestValidator;
 use Deliveryman\Service\ConfigManager;
 use Deliveryman\Service\Sender;
@@ -58,9 +58,9 @@ class SenderTest extends TestCase
             ],
         ]);
 
-        $returnedResponses[$reqId] = (new \Deliveryman\Entity\HttpQueue\ResponseData())
+        $returnedResponses[$reqId] = (new \Deliveryman\Entity\HttpResponse())
             ->setId($reqId)
-            ->setHeaders([new RequestHeader('Content-Type', 'application/json')])
+            ->setHeaders([new HttpHeader('Content-Type', 'application/json')])
             ->setStatusCode(200)
             ->setData(['server' => 'success!'])
         ;

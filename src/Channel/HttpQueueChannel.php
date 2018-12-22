@@ -6,8 +6,8 @@ use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\HttpQueue\ChannelConfig;
 use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestConfig;
-use Deliveryman\Entity\RequestHeader;
-use Deliveryman\Entity\HttpQueue\ResponseData;
+use Deliveryman\Entity\HttpHeader;
+use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Entity\ResponseItemInterface;
 use Deliveryman\EventListener\BuildResponseEvent;
 use Deliveryman\Exception\ChannelException;
@@ -531,8 +531,8 @@ class HttpQueueChannel extends AbstractChannel
     }
 
     /**
-     * @param ResponseData|ResponseItemInterface $response
-     * @return ResponseData
+     * @param HttpResponse|ResponseItemInterface $response
+     * @return HttpResponse
      * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function filterResponseHeaders($response)
@@ -588,18 +588,18 @@ class HttpQueueChannel extends AbstractChannel
     /**
      * @param Request $request
      * @param Response|ResponseInterface $srcResponse
-     * @return ResponseData
+     * @return HttpResponse
      * @throws ChannelException
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function buildResponseData(Request $request, $srcResponse): ResponseData
+    protected function buildResponseData(Request $request, $srcResponse): HttpResponse
     {
         // TODO: dispatcher extend with config request resulting object
         // TODO: add headers from config
 
         $requestConfig = $request->getConfig();
 
-        $targetResponse = new ResponseData();
+        $targetResponse = new HttpResponse();
         $targetResponse->setId($request->getId());
         $targetResponse->setStatusCode($srcResponse->getStatusCode());
         $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
@@ -656,7 +656,7 @@ class HttpQueueChannel extends AbstractChannel
         $headers = [];
         foreach ($srcResponse->getHeaders() as $name => $values) {
             foreach ($values as $value) {
-                $headers[] = new RequestHeader($name, $value);
+                $headers[] = new HttpHeader($name, $value);
             }
         }
 
@@ -666,13 +666,13 @@ class HttpQueueChannel extends AbstractChannel
     /**
      * @param string $format
      * @param ResponseInterface $srcResponse
-     * @param ResponseData $targetResponse
+     * @param HttpResponse $targetResponse
      * @throws ChannelException
      */
-    protected function genResponseBody($format, ResponseInterface $srcResponse, ResponseData $targetResponse): void
+    protected function genResponseBody($format, ResponseInterface $srcResponse, HttpResponse $targetResponse): void
     {
         switch ($format) {
-            case ResponseData::FORMAT_JSON:
+            case HttpResponse::FORMAT_JSON:
                 // TODO: if exception thrown then somehow mark response as failed and write some error info
                 $data = $srcResponse->getBody()->getContents();
                 if ($data === '' || $data === null) {
@@ -687,10 +687,10 @@ class HttpQueueChannel extends AbstractChannel
                     }
                 }
                 break;
-            case ResponseData::FORMAT_TEXT:
+            case HttpResponse::FORMAT_TEXT:
                 $targetResponse->setData($srcResponse->getBody()->getContents());
                 break;
-            case ResponseData::FORMAT_BINARY:
+            case HttpResponse::FORMAT_BINARY:
                 // TODO: implement me! Download files to tmp dir and return links to those files
                 // TODO: implement FileStorageInterface to abstract place for storing files
             default:

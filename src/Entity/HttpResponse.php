@@ -1,13 +1,10 @@
 <?php
 
-namespace Deliveryman\Entity\HttpQueue;
+namespace Deliveryman\Entity;
 
-
-use Deliveryman\Entity\RequestHeader;
-use Deliveryman\Entity\ResponseItemInterface;
 use Deliveryman\Normalizer\NormalizableInterface;
 
-class ResponseData implements NormalizableInterface, ResponseItemInterface
+class HttpResponse implements NormalizableInterface, ResponseItemInterface
 {
     const FORMAT_JSON = 'json';
     const FORMAT_TEXT = 'text';
@@ -21,7 +18,7 @@ class ResponseData implements NormalizableInterface, ResponseItemInterface
 
     /**
      * List of requests to send together with request with disregard to config merging strategy
-     * @var RequestHeader[]|null|array
+     * @var HttpHeader[]|null|array
      */
     protected $headers;
 
@@ -45,7 +42,7 @@ class ResponseData implements NormalizableInterface, ResponseItemInterface
 
     /**
      * @param mixed $id
-     * @return ResponseData
+     * @return HttpResponse
      */
     public function setId($id)
     {
@@ -55,7 +52,7 @@ class ResponseData implements NormalizableInterface, ResponseItemInterface
     }
 
     /**
-     * @return array|RequestHeader[]|null
+     * @return array|HttpHeader[]|null
      */
     public function getHeaders()
     {
@@ -63,8 +60,8 @@ class ResponseData implements NormalizableInterface, ResponseItemInterface
     }
 
     /**
-     * @param array|RequestHeader[]|null $headers
-     * @return ResponseData
+     * @param array|HttpHeader[]|null $headers
+     * @return HttpResponse
      */
     public function setHeaders($headers)
     {
@@ -83,7 +80,7 @@ class ResponseData implements NormalizableInterface, ResponseItemInterface
 
     /**
      * @param mixed $statusCode
-     * @return ResponseData
+     * @return HttpResponse
      */
     public function setStatusCode($statusCode)
     {
@@ -102,7 +99,7 @@ class ResponseData implements NormalizableInterface, ResponseItemInterface
 
     /**
      * @param mixed $data
-     * @return ResponseData
+     * @return HttpResponse
      */
     public function setData($data)
     {

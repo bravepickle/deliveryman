@@ -12,9 +12,9 @@ info:
         name: Apache 2.0
         url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
 
-# TODO: batch response introduce
+# TODO: for each channel provide separate definition docs
 paths:
-    /batch:
+    /http_queue/batch:
         post:
             summary: Create new batch of requests
             operationId: createBatch

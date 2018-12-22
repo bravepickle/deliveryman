@@ -7,7 +7,7 @@ use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\HttpQueue\ChannelConfig;
 use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestConfig;
-use Deliveryman\Entity\RequestHeader;
+use Deliveryman\Entity\HttpHeader;
 use Deliveryman\Exception\SerializationException;
 use Symfony\Component\Serializer\Exception\InvalidArgumentException;
 use Symfony\Component\Serializer\Exception\LogicException;
@@ -60,7 +60,7 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
                 return $this->denormalizeRequest($data, $class, $format, $context);
             case RequestConfig::class:
                 return $this->denormalizeRequestConfig($data, $class, $format, $context);
-            case RequestHeader::class:
+            case HttpHeader::class:
                 return $this->denormalizeRequestHeader($data, $class, $context);
             default:
                 throw new LogicException('Cannot denormalize data for unexpected class: ' . $class . '.');
@@ -128,8 +128,8 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
         $object->setOnFail($data['onFail'] ?? null);
         $object->setSilent($data['silent'] ?? null);
 
-        if (isset($data['channel']) && $this->serializer instanceof DenormalizerInterface) {
-            $object->setChannel($this->serializer->denormalize($data['channel'], ChannelConfig::class, $format));
+        if (isset($data['channel'])) {
+            $object->setChannel($this->getSerializer()->denormalize($data['channel'], ChannelConfig::class, $format));
         }
 
         return $object;
@@ -163,7 +163,7 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
         $object->setConfig($requestConfig);
 
         if (!empty($data['headers'])) {
-            $object->setHeaders($this->denoramlizeHeaders($data['headers'], RequestHeader::class, $format, $context));
+            $object->setHeaders($this->denoramlizeHeaders($data['headers'], HttpHeader::class, $format, $context));
         }
 
         if (!empty($data['query'])) {
@@ -187,7 +187,7 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
      */
     protected function denormalizeRequestHeader($data, $class, $context)
     {
-        /** @var RequestHeader $object */
+        /** @var HttpHeader $object */
         $object = $this->extractObjectToPopulate($class, $context) ?: new $class();
 
         $object->setValue($data['value'] ?? null);

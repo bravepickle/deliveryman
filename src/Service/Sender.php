@@ -71,21 +71,12 @@ class Sender
      */
     public function send(BatchRequest $batchRequest)
     {
-        // 0. check global config settings
-        // 1. loop through queues to send requests in parallel
-        // 2. merge configs according to settings per request
-        // 3. create queues and process them accordingly
-        // 4. dispatch events per requests, queues etc.
-        // 5. validate batch request allowed by master config
-
         $this->channel->clear();
-
         if (!$batchRequest->getQueues()) {
             throw new SendingException('No queues with requests specified to process.');
         }
 
         $channel = $this->channel;
-
         $errors = $this->validator->validate($batchRequest);
         if (!empty($errors)) {
             return $this->wrapErrors($errors);
