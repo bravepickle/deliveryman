@@ -58,7 +58,7 @@ class SenderTest extends TestCase
             ],
         ]);
 
-        $returnedResponses[$reqId] = (new \Deliveryman\Entity\Response())
+        $returnedResponses[$reqId] = (new \Deliveryman\Entity\HttpQueue\ResponseData())
             ->setId($reqId)
             ->setHeaders([new RequestHeader('Content-Type', 'application/json')])
             ->setStatusCode(200)

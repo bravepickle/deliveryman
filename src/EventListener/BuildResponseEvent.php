@@ -3,7 +3,7 @@
 namespace Deliveryman\EventListener;
 
 use Deliveryman\Entity\RequestConfig;
-use Deliveryman\Entity\Response;
+use Deliveryman\Entity\HttpQueue\ResponseData;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\EventDispatcher\Event as BasicEvent;
 
@@ -20,7 +20,7 @@ class BuildResponseEvent extends BasicEvent
     const EVENT_FAILED_POST_BUILD = 'deliveryman.response.failed_post_build';
 
     /**
-     * @var Response|null
+     * @var ResponseData|null
      */
     protected $targetResponse;
 
@@ -36,11 +36,11 @@ class BuildResponseEvent extends BasicEvent
 
     /**
      * BuildResponseEvent constructor.
-     * @param Response|null $targetResponse
+     * @param ResponseData|null $targetResponse
      * @param ResponseInterface $sourceResponse
      * @param RequestConfig|null $requestConfig
      */
-    public function __construct(?Response $targetResponse, ?ResponseInterface $sourceResponse, ?RequestConfig $requestConfig)
+    public function __construct(?ResponseData $targetResponse, ?ResponseInterface $sourceResponse, ?RequestConfig $requestConfig)
     {
         $this->targetResponse = $targetResponse;
         $this->sourceResponse = $sourceResponse;
@@ -48,18 +48,18 @@ class BuildResponseEvent extends BasicEvent
     }
 
     /**
-     * @return Response|null
+     * @return ResponseData|null
      */
-    public function getTargetResponse(): ?Response
+    public function getTargetResponse(): ?ResponseData
     {
         return $this->targetResponse;
     }
 
     /**
-     * @param Response|null $targetResponse
+     * @param ResponseData|null $targetResponse
      * @return BuildResponseEvent
      */
-    public function setTargetResponse(?Response $targetResponse): BuildResponseEvent
+    public function setTargetResponse(?ResponseData $targetResponse): BuildResponseEvent
     {
         $this->targetResponse = $targetResponse;
 

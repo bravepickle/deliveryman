@@ -6,6 +6,10 @@ use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\HttpQueue\ChannelConfig;
 use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestConfig;
+use Deliveryman\Entity\RequestHeader;
+use Deliveryman\Entity\HttpQueue\ResponseData;
+use Deliveryman\Entity\ResponseItemInterface;
+use Deliveryman\EventListener\BuildResponseEvent;
 use Deliveryman\Exception\ChannelException;
 use Deliveryman\Exception\SendingException;
 use Deliveryman\Service\ConfigManager;
@@ -15,7 +19,10 @@ use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\RequestOptions;
 use GuzzleHttp\Promise;
 use Psr\Http\Message\ResponseInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Serializer\Encoder\JsonDecode;
+use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 
 /**
  * Class HttpChannel
@@ -31,6 +38,7 @@ class HttpQueueChannel extends AbstractChannel
     const OPT_REQUEST_OPTIONS = 'request_options';
     const OPT_EXPECTED_STATUS_CODES = 'expected_status_codes';
     const OPT_CONFIG_MERGE = 'config_merge';
+    const OPT_RESOURCE_FORMAT = 'resource_format';
 
     /**
      * @var ConfigManager
@@ -53,14 +61,25 @@ class HttpQueueChannel extends AbstractChannel
     protected $batchRequest;
 
     /**
+     * @var EventDispatcherInterface|null
+     */
+    protected $dispatcher;
+
+    /**
      * Sender constructor.
      * @param ConfigManager $configManager
      * @param RequestStack|null $requestStack
+     * @param EventDispatcherInterface|null $dispatcher
      */
-    public function __construct(ConfigManager $configManager, ?RequestStack $requestStack = null)
+    public function __construct(
+        ConfigManager $configManager,
+        ?RequestStack $requestStack = null,
+        ?EventDispatcherInterface $dispatcher = null
+    )
     {
         $this->configManager = $configManager;
         $this->requestStack = $requestStack;
+        $this->dispatcher = $dispatcher;
     }
 
     /**
@@ -376,7 +395,7 @@ class HttpQueueChannel extends AbstractChannel
         return function (ResponseInterface $response) use ($client, $queue, $request) {
             if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request))) {
                 $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
-                $this->addFailedResponse($request->getId(), $response);
+                $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
                 switch ($request->getConfig()->getOnFail()) {
                     case RequestConfig::CONFIG_ON_FAIL_PROCEED:
@@ -396,7 +415,7 @@ class HttpQueueChannel extends AbstractChannel
                 }
             }
 
-            $this->addOkResponse($request->getId(), $response);
+            $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));
             $promise = $this->chainSendRequest($queue, $client);
             if ($promise) {
                 $promise->wait();
@@ -416,7 +435,7 @@ class HttpQueueChannel extends AbstractChannel
             // TODO: dispatch event on fail
             $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
             if ($e instanceof RequestException && $e->getResponse()) {
-                $this->addFailedResponse($request->getId(), $e->getResponse());
+                $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $e->getResponse()));
             }
 
             switch ($request->getConfig()->getOnFail()) {
@@ -453,13 +472,13 @@ class HttpQueueChannel extends AbstractChannel
             ) {
                 // todo: save failed objects and succeeded responses in separate data sets
                 $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
-                $this->addFailedResponse($request->getId(), $response);
+                $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
                 throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
                     ->setRequest($request);
             }
 
-            $this->addOkResponse($request->getId(), $response);
+            $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));
         };
     }
 
@@ -472,7 +491,7 @@ class HttpQueueChannel extends AbstractChannel
         return function ($e) use ($request) {
             $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
             if ($e instanceof RequestException && $e->getResponse()) {
-                $this->addFailedResponse($request->getId(), $e->getResponse());
+                $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $e->getResponse()));
             }
 
             switch ($this->getOnFailWithFallback($request)) {
@@ -497,25 +516,37 @@ class HttpQueueChannel extends AbstractChannel
      * @inheritdoc
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    public function addOkResponse($path, ResponseInterface $response)
+    public function addOkResponse($path, ResponseItemInterface $response)
     {
         return parent::addOkResponse($path, $this->filterResponseHeaders($response));
     }
 
     /**
-     * @param ResponseInterface $response
-     * @return ResponseInterface
+     * @inheritdoc
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function filterResponseHeaders(ResponseInterface $response)
+    public function addFailedResponse($path, ResponseItemInterface $response)
+    {
+        return parent::addFailedResponse($path, $this->filterResponseHeaders($response));
+    }
+
+    /**
+     * @param ResponseData|ResponseItemInterface $response
+     * @return ResponseData
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function filterResponseHeaders($response)
     {
         $allowedHeaders = $this->getChannelConfig()[self::OPT_RECEIVER_HEADERS] ?? [];
         if ($allowedHeaders) { // if empty consider that all allowed
-            foreach ($response->getHeaders() as $name => $values) {
-                if (!in_array($name, $allowedHeaders)) {
-                    $response = $response->withoutHeader($name);
+            $headers = [];
+            foreach ($response->getHeaders() as $header) {
+                if (in_array($header->getName(), $allowedHeaders)) {
+                    $headers[] = $header;
                 }
             }
+
+            $response->setHeaders($headers);
         }
 
         return $response;
@@ -551,6 +582,119 @@ class HttpQueueChannel extends AbstractChannel
             if ($initialRequest->headers->has($allowedHeader)) {
                 $headers[$allowedHeader] = $initialRequest->headers->get($allowedHeader);
             }
+        }
+    }
+
+    /**
+     * @param Request $request
+     * @param Response|ResponseInterface $srcResponse
+     * @return ResponseData
+     * @throws ChannelException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function buildResponseData(Request $request, $srcResponse): ResponseData
+    {
+        // TODO: dispatcher extend with config request resulting object
+        // TODO: add headers from config
+
+        $requestConfig = $request->getConfig();
+
+        $targetResponse = new ResponseData();
+        $targetResponse->setId($request->getId());
+        $targetResponse->setStatusCode($srcResponse->getStatusCode());
+        $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
+
+        // TODO: check config merge strategy
+        if ($requestConfig && $requestConfig->getFormat()) {
+            $format = $requestConfig->getFormat();
+        } else {
+            $format = $this->getMasterConfig()[self::OPT_RESOURCE_FORMAT];
+        }
+
+        $this->genResponseBody($format, $srcResponse, $targetResponse);
+
+        if ($this->dispatcher) {
+            $event = new BuildResponseEvent($targetResponse, $srcResponse, $requestConfig);
+            $this->dispatcher->dispatch(BuildResponseEvent::EVENT_POST_BUILD, $event);
+            $targetResponse = $event->getTargetResponse();
+        }
+
+        return $targetResponse;
+
+//        if (!$requestConfig->getSilent()) {
+//            $succeededResp[$targetResponse->getId()] = $targetResponse;
+//        }
+
+//        foreach ($channel->getFailedResponses() as $id => $srcResponse) {
+//            $requestConfig = $requests[$id]->getConfig();
+//
+//            $targetResponse = new Response();
+//            $targetResponse->setId($id);
+//            $targetResponse->setStatusCode($srcResponse->getStatusCode());
+//            $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
+//
+//            $this->genResponseBody($requestConfig->getFormat(), $srcResponse, $targetResponse);
+//
+//            if ($this->dispatcher) {
+//                $event = new BuildResponseEvent($targetResponse, $srcResponse, $requestConfig);
+//                $this->dispatcher->dispatch(BuildResponseEvent::EVENT_FAILED_POST_BUILD, $event);
+//                $targetResponse = $event->getTargetResponse();
+//            }
+//
+//            $failedResp[$targetResponse->getId()] = $targetResponse;
+//        }
+//
+//        return [$succeededResp, $failedResp];
+    }
+
+    /**
+     * @param ResponseInterface $srcResponse
+     * @return array
+     */
+    protected function buildResponseHeaders(ResponseInterface $srcResponse): array
+    {
+        $headers = [];
+        foreach ($srcResponse->getHeaders() as $name => $values) {
+            foreach ($values as $value) {
+                $headers[] = new RequestHeader($name, $value);
+            }
+        }
+
+        return $headers;
+    }
+
+    /**
+     * @param string $format
+     * @param ResponseInterface $srcResponse
+     * @param ResponseData $targetResponse
+     * @throws ChannelException
+     */
+    protected function genResponseBody($format, ResponseInterface $srcResponse, ResponseData $targetResponse): void
+    {
+        switch ($format) {
+            case ResponseData::FORMAT_JSON:
+                // TODO: if exception thrown then somehow mark response as failed and write some error info
+                $data = $srcResponse->getBody()->getContents();
+                if ($data === '' || $data === null) {
+                    $targetResponse->setData(null);
+                } else {
+                    try {
+                        $targetResponse->setData((new JsonDecode())
+                            ->decode($data, 'json', ['json_decode_associative' => true]));
+                    } catch (NotEncodableValueException $e) {
+                        // TODO: add event dispatcher, if defined
+                        $targetResponse->setData($data); // set raw data
+                    }
+                }
+                break;
+            case ResponseData::FORMAT_TEXT:
+                $targetResponse->setData($srcResponse->getBody()->getContents());
+                break;
+            case ResponseData::FORMAT_BINARY:
+                // TODO: implement me! Download files to tmp dir and return links to those files
+                // TODO: implement FileStorageInterface to abstract place for storing files
+            default:
+                throw new ChannelException('Not supported format: ' . $format);
         }
     }
 

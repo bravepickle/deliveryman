@@ -9,8 +9,10 @@ namespace DeliverymanTest\Channel;
 
 use Deliveryman\Channel\HttpQueueChannel;
 use Deliveryman\Entity\BatchRequest;
+use Deliveryman\Entity\HttpQueue\ResponseData;
 use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestHeader;
+use Deliveryman\Entity\ResponseItemInterface;
 use Deliveryman\Service\ConfigManager;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -53,13 +55,13 @@ class HttpQueueChannelTest extends TestCase
 
         $this->assertArrayHasKey('GET_http://example.com/comments', $channel->getOkResponses());
 
-        /** @var Response $actualResponse */
+        /** @var ResponseData $actualResponse */
         $actualResponse = $channel->getOkResponses()['GET_http://example.com/comments'];
 
-        $this->assertTrue($actualResponse instanceof ResponseInterface, 'Response should be PSR-7 interface.');
+        $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
 
         $this->assertEquals($expected['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
-        $this->assertEquals($expected['data'], $actualResponse->getBody()->getContents(), 'Body differs');
+        $this->assertEquals($expected['data'], $actualResponse->getData(), 'Body differs');
     }
 
     /**
@@ -131,8 +133,7 @@ class HttpQueueChannelTest extends TestCase
         /** @var Response $actualResponse */
         $actualResponse = $actualResponses[$expected[0]['id']];
 
-        $this->assertTrue($actualResponse instanceof ResponseInterface, 'Response should be PSR-7 interface.');
-
+        $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
 
         $this->assertEquals($expected[0]['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
         $this->assertEquals($expected[0]['headers'], $actualResponse->getHeaders(), 'Headers differ');
@@ -264,8 +265,7 @@ class HttpQueueChannelTest extends TestCase
         /** @var Response $actualResponse */
         $actualResponse = $actualResponses[$expected[0]['id']];
 
-        $this->assertTrue($actualResponse instanceof ResponseInterface, 'Response should be PSR-7 interface.');
-
+        $this->assertTrue($actualResponse instanceof ResponseItemInterface, 'Response should be ResponseItemInterface interface.');
 
         $this->assertEquals($expected[0]['statusCode'], $actualResponse->getStatusCode(), 'Status code differ');
         $this->assertEquals($expected[0]['headers'], $actualResponse->getHeaders(), 'Headers differ');

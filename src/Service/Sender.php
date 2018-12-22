@@ -8,17 +8,11 @@ use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
 use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestConfig;
-use Deliveryman\Entity\RequestHeader;
-use Deliveryman\Entity\Response;
-use Deliveryman\EventListener\BuildResponseEvent;
 use Deliveryman\EventListener\EventSender;
 use Deliveryman\Exception\ChannelException;
 use Deliveryman\Exception\SendingException;
 use Deliveryman\Exception\SerializationException;
-use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\Serializer\Encoder\JsonDecode;
-use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 
 /**
  * Class Sender
@@ -124,7 +118,6 @@ class Sender
      * @param array|Request[] $requests
      * @param bool $aborted
      * @return BatchResponse
-     * @throws SerializationException
      */
     protected function wrapResponses(
         ChannelInterface $channel,
@@ -223,7 +216,6 @@ class Sender
      * @param ChannelInterface $channel
      * @param array|Request[] $requests mapped requests by ids
      * @return array
-     * @throws SerializationException
      */
     protected function buildResponses(ChannelInterface $channel, array $requests): array
     {
@@ -233,101 +225,18 @@ class Sender
         // TODO: check expected status codes and split responses to good and bad
 
         foreach ($channel->getOkResponses() as $id => $srcResponse) {
-            // TODO: dispatcher extend with config request resulting object
-            // TODO: add headers from config
-
             $requestConfig = $requests[$id]->getConfig();
 
-            $targetResponse = new Response();
-            $targetResponse->setId($id);
-            $targetResponse->setStatusCode($srcResponse->getStatusCode());
-            $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
-
-            $this->genResponseBody($requestConfig->getFormat(), $srcResponse, $targetResponse);
-
-            if ($this->dispatcher) {
-                $event = new BuildResponseEvent($targetResponse, $srcResponse, $requestConfig);
-                $this->dispatcher->dispatch(BuildResponseEvent::EVENT_POST_BUILD, $event);
-                $targetResponse = $event->getTargetResponse();
-                $requestConfig = $event->getRequestConfig();
-            }
-
             if (!$requestConfig->getSilent()) {
-                $succeededResp[$targetResponse->getId()] = $targetResponse;
+                $succeededResp[$srcResponse->getId()] = $srcResponse;
             }
         }
 
         foreach ($channel->getFailedResponses() as $id => $srcResponse) {
-            $requestConfig = $requests[$id]->getConfig();
-
-            $targetResponse = new Response();
-            $targetResponse->setId($id);
-            $targetResponse->setStatusCode($srcResponse->getStatusCode());
-            $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
-
-            $this->genResponseBody($requestConfig->getFormat(), $srcResponse, $targetResponse);
-
-            if ($this->dispatcher) {
-                $event = new BuildResponseEvent($targetResponse, $srcResponse, $requestConfig);
-                $this->dispatcher->dispatch(BuildResponseEvent::EVENT_FAILED_POST_BUILD, $event);
-                $targetResponse = $event->getTargetResponse();
-            }
-
-            $failedResp[$targetResponse->getId()] = $targetResponse;
+            $failedResp[$srcResponse->getId()] = $srcResponse;
         }
 
         return [$succeededResp, $failedResp];
-    }
-
-    /**
-     * @param ResponseInterface $srcResponse
-     * @return array
-     */
-    protected function buildResponseHeaders(ResponseInterface $srcResponse): array
-    {
-        $headers = [];
-        foreach ($srcResponse->getHeaders() as $name => $values) {
-            foreach ($values as $value) {
-                $headers[] = new RequestHeader($name, $value);
-            }
-        }
-
-        return $headers;
-    }
-
-    /**
-     * @param string $format
-     * @param ResponseInterface $srcResponse
-     * @param Response $targetResponse
-     * @throws SerializationException
-     */
-    protected function genResponseBody($format, ResponseInterface $srcResponse, Response $targetResponse): void
-    {
-        switch ($format) {
-            case Response::FORMAT_JSON:
-                // TODO: if exception thrown then somehow mark response as failed and write some error info
-                $data = $srcResponse->getBody()->getContents();
-                if ($data === '' || $data === null) {
-                    $targetResponse->setData(null);
-                } else {
-                    try {
-                        $targetResponse->setData((new JsonDecode())
-                            ->decode($data,'json', ['json_decode_associative' => true]));
-                    } catch (NotEncodableValueException $e) {
-                        // TODO: add event dispatcher, if defined
-                        $targetResponse->setData($data); // set raw data
-                    }
-                }
-                break;
-            case Response::FORMAT_TEXT:
-                $targetResponse->setData($srcResponse->getBody()->getContents());
-                break;
-            case Response::FORMAT_BINARY:
-                // TODO: implement me! Download files to tmp dir and return links to those files
-                // TODO: implement FileStorageInterface to abstract place for storing files
-            default:
-                throw new SerializationException('Not supported format: ' . $format);
-        }
     }
 
     /**

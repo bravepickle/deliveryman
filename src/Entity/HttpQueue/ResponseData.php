@@ -1,11 +1,13 @@
 <?php
 
-namespace Deliveryman\Entity;
+namespace Deliveryman\Entity\HttpQueue;
 
 
+use Deliveryman\Entity\RequestHeader;
+use Deliveryman\Entity\ResponseItemInterface;
 use Deliveryman\Normalizer\NormalizableInterface;
 
-class Response implements NormalizableInterface
+class ResponseData implements NormalizableInterface, ResponseItemInterface
 {
     const FORMAT_JSON = 'json';
     const FORMAT_TEXT = 'text';
@@ -43,7 +45,7 @@ class Response implements NormalizableInterface
 
     /**
      * @param mixed $id
-     * @return Response
+     * @return ResponseData
      */
     public function setId($id)
     {
@@ -62,7 +64,7 @@ class Response implements NormalizableInterface
 
     /**
      * @param array|RequestHeader[]|null $headers
-     * @return Response
+     * @return ResponseData
      */
     public function setHeaders($headers)
     {
@@ -81,7 +83,7 @@ class Response implements NormalizableInterface
 
     /**
      * @param mixed $statusCode
-     * @return Response
+     * @return ResponseData
      */
     public function setStatusCode($statusCode)
     {
@@ -100,7 +102,7 @@ class Response implements NormalizableInterface
 
     /**
      * @param mixed $data
-     * @return Response
+     * @return ResponseData
      */
     public function setData($data)
     {
