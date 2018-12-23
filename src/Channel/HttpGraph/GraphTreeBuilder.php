@@ -14,14 +14,14 @@ use Deliveryman\Exception\LogicException;
  * Class GraphBuilder builds nodes graph from specified relations
  * @package Deliveryman\Channel\HttpGraph
  */
-class GraphBuilder
+class GraphTreeBuilder
 {
     /**
      * @param array|GraphNode[] $nodes
      * @return array|GraphNode[]
      * @throws LogicException
      */
-    protected function buildNodes(array $nodes)
+    public function buildNodes(array $nodes)
     {
         $nodesMap = $this->buildNodesMap($nodes);
         $this->validate($nodes, $nodesMap);
@@ -34,6 +34,7 @@ class GraphBuilder
      * @param GraphNode $node
      * @param array $nodesMap
      * @return bool
+     * @throws LogicException
      */
     protected function hasCircularReferences(GraphNode $node, array $nodesMap): bool
     {
@@ -55,6 +56,7 @@ class GraphBuilder
      * @param array|GraphNode[] $nodesMap
      * @param GraphNode $srcNode
      * @param callable $callback
+     * @throws LogicException
      */
     protected function walkRefNodes(array $nodesMap, GraphNode $srcNode, callable $callback)
     {
@@ -78,7 +80,9 @@ class GraphBuilder
     {
         $nodes = [];
         foreach ($requests as $request) {
-            $nodes[] = new GraphNode($request);
+            $nodes[] = (new GraphNode())
+                ->setId($request->getId())
+                ->setReferenceIds($request->getReq());
         }
 
         return $this->buildNodes($nodes);
@@ -128,6 +132,7 @@ class GraphBuilder
 
     /**
      * @param array $nodesMap
+     * @throws LogicException
      */
     protected function addRelations(array $nodesMap): void
     {

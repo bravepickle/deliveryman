@@ -1,0 +1,30 @@
+flattenedArrowTailsIteratorProvider:
+    - input:
+          - { id: A, refs: [B] }
+          - { id: B, refs: [] }
+      output:
+          - [A, B]
+
+    - input:
+          - { id: A, refs: [B] }
+          - { id: B, refs: [] }
+          - { id: C, refs: [] }
+      output:
+          - [A, B]
+          - [C]
+
+    - input:
+          - { id: A, refs: [B] }
+          - { id: B, refs: [] }
+          - { id: C, refs: [B] }
+      output:
+          - [A, B]
+          - [C, B]
+
+    - input:
+          - { id: A, refs: [B, C] }
+          - { id: B, refs: [C] }
+          - { id: C, refs: [] }
+      output:
+          - [A, B, C]
+          - [A, C]

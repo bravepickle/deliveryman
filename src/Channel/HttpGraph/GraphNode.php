@@ -11,10 +11,25 @@ use Deliveryman\Entity\HttpGraph\HttpRequest;
 use Deliveryman\Entity\IdentifiableInterface;
 use Deliveryman\Exception\LogicException;
 
+/**
+ * Class GraphNode
+ * @package Deliveryman\Channel\HttpGraph
+ */
 class GraphNode implements IdentifiableInterface
 {
     /**
-     * @var HttpRequest
+     * @var mixed
+     */
+    protected $id;
+
+    /**
+     * @var array
+     */
+    protected $referenceIds = [];
+
+    /**
+     * Payload data
+     * @var mixed
      */
     protected $data;
 
@@ -32,44 +47,66 @@ class GraphNode implements IdentifiableInterface
 
     /**
      * GraphNode constructor.
+     * @param null $id
+     * @param array $referenceIds
      * @param HttpRequest $data
      */
-    public function __construct(HttpRequest $data = null)
+    public function __construct($id = null, array $referenceIds = [], $data = null)
     {
+        $this->id = $id;
+        $this->referenceIds = $referenceIds;
         $this->data = $data;
     }
 
     /**
      * @return mixed
-     * @throws LogicException
      */
     public function getId()
     {
-        if (!$this->getData()) {
-            throw new LogicException('Graph node data is not set');
-        }
-
-        return $this->getData()->getId();
-    }
-
-    public function getReferenceIds(): array
-    {
-        return (array)$this->getData()->getReq();
+        return $this->id;
     }
 
     /**
-     * @return HttpRequest
+     * @param mixed $id
+     * @return GraphNode
      */
-    public function getData(): HttpRequest
+    public function setId($id)
+    {
+        $this->id = $id;
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getReferenceIds(): array
+    {
+        return $this->referenceIds;
+    }
+
+    /**
+     * @param array $referenceIds
+     * @return GraphNode
+     */
+    public function setReferenceIds(array $referenceIds): GraphNode
+    {
+        $this->referenceIds = $referenceIds;
+        return $this;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getData()
     {
         return $this->data;
     }
 
     /**
-     * @param HttpRequest $data
+     * @param mixed $data
      * @return GraphNode
      */
-    public function setData(HttpRequest $data): GraphNode
+    public function setData($data)
     {
         $this->data = $data;
         return $this;
@@ -107,7 +144,6 @@ class GraphNode implements IdentifiableInterface
     /**
      * @param GraphNode $node
      * @return $this
-     * @throws LogicException
      */
     public function addPredecessor(GraphNode $node)
     {

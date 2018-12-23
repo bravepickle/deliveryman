@@ -105,7 +105,7 @@ class Configuration implements ConfigurationInterface
                     ->end()
                 ->end()
                 ->arrayNode('http_graph')
-                    ->info('HTTP requests that have dependencies similar to directed graph format')
+                    ->info('HTTP requests that have dependencies similar to directed tree graph format')
                     ->addDefaultsIfNotSet()
                     ->children()
                         ->arrayNode('request_options')

@@ -7,14 +7,18 @@
 namespace DeliverymanTest\Channel\HttpGraph;
 
 
-use Deliveryman\Channel\HttpGraph\GraphBuilder;
+use Deliveryman\Channel\HttpGraph\GraphTreeBuilder;
 use Deliveryman\Channel\HttpGraph\GraphNode;
 use Deliveryman\Entity\HttpGraph\HttpRequest;
 use Deliveryman\Exception\LogicException;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 
-class GraphBuilderTest extends TestCase
+/**
+ * Class GraphTreeBuilderTest
+ * @package DeliverymanTest\Channel\HttpGraph
+ */
+class GraphTreeBuilderTest extends TestCase
 {
     /**
      * Data sets for data provider taken from parsed files
@@ -30,14 +34,13 @@ class GraphBuilderTest extends TestCase
      */
     public function testBuildNodesFromRequests($requests, array $expected)
     {
-        $builder = new GraphBuilder();
+        $builder = new GraphTreeBuilder();
         $items = $builder->buildNodesFromRequests($requests);
 
         // converting to simple array with same format as from data provider
         $actual = $this->convertNodesToArray($items);
 
         $this->assertEquals($expected, $actual);
-
     }
 
     public function buildNodesFromRequestsProvider()
@@ -92,7 +95,7 @@ class GraphBuilderTest extends TestCase
             (new HttpRequest())->setId('foo'),
         ];
 
-        $graphBuilder = new GraphBuilder();
+        $graphBuilder = new GraphTreeBuilder();
         $graphBuilder->buildNodesFromRequests($requests);
     }
 
@@ -109,7 +112,7 @@ class GraphBuilderTest extends TestCase
             (new HttpRequest())->setId('bar')->setReq(['foo']),
         ];
 
-        $graphBuilder = new GraphBuilder();
+        $graphBuilder = new GraphTreeBuilder();
         $graphBuilder->buildNodesFromRequests($requests);
     }
 
@@ -125,14 +128,13 @@ class GraphBuilderTest extends TestCase
             (new HttpRequest())->setId('foo')->setReq(['bar']),
         ];
 
-        $graphBuilder = new GraphBuilder();
+        $graphBuilder = new GraphTreeBuilder();
         $graphBuilder->buildNodesFromRequests($requests);
     }
 
     /**
      * @param array|GraphNode[] $items
      * @return array
-     * @throws LogicException
      */
     protected function convertNodesToArray(array $items): array
     {
