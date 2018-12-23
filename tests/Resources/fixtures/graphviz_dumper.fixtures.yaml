@@ -35,7 +35,7 @@ dumpProvider:
             - { id: B, refs: [C] }
             - { id: C, refs: [D] }
             - { id: D, refs: [] }
-        options: {}
+        options: {edge: {color: green}}
         output: |
             digraph G {
               ratio="compress";
@@ -45,8 +45,8 @@ dumpProvider:
               l2 [label="B"];
               l3 [label="C"];
               l4 [label="D"];
-              l1 -> l2 [fontsize="9" fontname="Arial" color="grey" arrowhead="open" arrowsize="0.5"];
-              l1 -> l3 [fontsize="9" fontname="Arial" color="grey" arrowhead="open" arrowsize="0.5"];
-              l2 -> l3 [fontsize="9" fontname="Arial" color="grey" arrowhead="open" arrowsize="0.5"];
-              l3 -> l4 [fontsize="9" fontname="Arial" color="grey" arrowhead="open" arrowsize="0.5"];
+              l1 -> l2 [fontsize="9" fontname="Arial" color="green" arrowhead="open" arrowsize="0.5"];
+              l1 -> l3 [fontsize="9" fontname="Arial" color="green" arrowhead="open" arrowsize="0.5"];
+              l2 -> l3 [fontsize="9" fontname="Arial" color="green" arrowhead="open" arrowsize="0.5"];
+              l3 -> l4 [fontsize="9" fontname="Arial" color="green" arrowhead="open" arrowsize="0.5"];
             }
