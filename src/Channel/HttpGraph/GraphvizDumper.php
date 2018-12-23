@@ -14,7 +14,8 @@ namespace Deliveryman\Channel\HttpGraph;
 class GraphvizDumper
 {
     const OPT_DEFAULTS = [
-        'graph' => ['ratio' => 'compress'],
+        'dumper' => ['alias_size' => 3],
+        'graph' => ['ratio' => 'compress', 'rankdir' => 'LR',],
         'node' => ['fontsize' => 11, 'fontname' => 'Arial', 'shape' => 'record'],
         'edge' => ['fontsize' => 9, 'fontname' => 'Arial', 'color' => 'grey', 'arrowhead' => 'open', 'arrowsize' => 0.5],
     ];
@@ -30,13 +31,25 @@ class GraphvizDumper
     protected $options = self::OPT_DEFAULTS;
 
     /**
+     * @var array
+     */
+    protected $labels = [];
+
+    /**
+     * @var int
+     */
+    protected $indexLabel = 0;
+
+    /**
      * GraphvizDumper constructor.
      * @param array $options
      */
     public function __construct(?array $options = null)
     {
         if ($options !== null) {
-            $this->options = array_merge_recursive($this->options, $options);
+            foreach ($options as $groupName => $group) { // merge
+                $this->options[$groupName] = array_merge($this->options[$groupName], $group);
+            }
         }
     }
 
@@ -71,7 +84,7 @@ class GraphvizDumper
         $lines[] = 'digraph G {';
 
         foreach ($rows as $row) {
-            $lines[] = implode(' ', $row) . ';';
+            $lines[] = '  ' . implode(' ', $row) . ';';
         }
 
         $lines[] = '}';
@@ -81,15 +94,36 @@ class GraphvizDumper
 
     /**
      * @param GraphNode $node
-     * @return bool|string
+     * @return string
      */
     protected function genLabel(GraphNode $node)
     {
-        return substr(spl_object_hash($node), 0, 5);
+        if (!preg_match('/[^[:ascii:]]/', $node->getId())) { // do we have forbidden symbols?
+            return $node->getId();
+        }
+
+        // generate new alias
+        return 'node_' . substr(md5(spl_object_hash($node)), 0, $this->options['dumper']['alias_size']);
+    }
+
+    /**
+     * @param GraphNode $node
+     * @return bool|string
+     */
+    protected function genDotId(GraphNode $node)
+    {
+        $key = md5(spl_object_hash($node));
+        if (!isset($this->labels[$key])) {
+            $this->labels[$key] = 'l' . ++$this->indexLabel;
+        }
+
+        return $this->labels[$key];
     }
 
     protected function reset()
     {
+        $this->labels = [];
+        $this->indexLabel = 0;
         $this->collection = null;
     }
 
@@ -140,7 +174,7 @@ class GraphvizDumper
     protected function addGraphDefinition(array &$rows): void
     {
         foreach ($this->options['graph'] as $name => $value) {
-            $rows[] = $name . '="' . $value . '"';
+            $rows[] = [$name . '="' . $value . '"'];
         }
     }
 
@@ -150,10 +184,13 @@ class GraphvizDumper
     protected function addNodesAndEdges(array &$rows): void
     {
         /** @var GraphNode $node */
-        foreach ($this->collection->arrowTailsIterator() as $node) {
-            $rows[] = [$node->getId(), $this->genNodeInstanceDefinition($node)];
+        foreach ($this->collection->getNodes() as $node) {
+            $rows[] = [$this->genDotId($node), $this->genNodeInstanceDefinition($node)];
+        }
+
+        foreach ($this->collection->getNodes() as $node) {
             foreach ($node->getSuccessors() as $successor) {
-                $rows[] = [$this->genLabel($node), $this->genLabel($successor), $this->genEdgeDefinition()];
+                $rows[] = [$this->genDotId($node), '->', $this->genDotId($successor), $this->genEdgeDefinition()];
             }
         }
     }

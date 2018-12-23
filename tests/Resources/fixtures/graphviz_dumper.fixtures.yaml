@@ -1,0 +1,52 @@
+dumpProvider:
+    -   input:
+            - { id: A, refs: [B] }
+            - { id: B, refs: [] }
+        options: {}
+        output: |
+            digraph G {
+              ratio="compress";
+              rankdir="LR";
+              node [fontsize="11" fontname="Arial" shape="record"];
+              l1 [label="A"];
+              l2 [label="B"];
+              l1 -> l2 [fontsize="9" fontname="Arial" color="grey" arrowhead="open" arrowsize="0.5"];
+            }
+
+    -   input:
+            - { id: A, refs: [B,C] }
+            - { id: B, refs: [] }
+            - { id: C, refs: [] }
+        options: {}
+        output: |
+            digraph G {
+              ratio="compress";
+              rankdir="LR";
+              node [fontsize="11" fontname="Arial" shape="record"];
+              l1 [label="A"];
+              l2 [label="B"];
+              l3 [label="C"];
+              l1 -> l2 [fontsize="9" fontname="Arial" color="grey" arrowhead="open" arrowsize="0.5"];
+              l1 -> l3 [fontsize="9" fontname="Arial" color="grey" arrowhead="open" arrowsize="0.5"];
+            }
+
+    -   input:
+            - { id: A, refs: [B,C] }
+            - { id: B, refs: [C] }
+            - { id: C, refs: [D] }
+            - { id: D, refs: [] }
+        options: {}
+        output: |
+            digraph G {
+              ratio="compress";
+              rankdir="LR";
+              node [fontsize="11" fontname="Arial" shape="record"];
+              l1 [label="A"];
+              l2 [label="B"];
+              l3 [label="C"];
+              l4 [label="D"];
+              l1 -> l2 [fontsize="9" fontname="Arial" color="grey" arrowhead="open" arrowsize="0.5"];
+              l1 -> l3 [fontsize="9" fontname="Arial" color="grey" arrowhead="open" arrowsize="0.5"];
+              l2 -> l3 [fontsize="9" fontname="Arial" color="grey" arrowhead="open" arrowsize="0.5"];
+              l3 -> l4 [fontsize="9" fontname="Arial" color="grey" arrowhead="open" arrowsize="0.5"];
+            }
