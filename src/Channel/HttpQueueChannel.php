@@ -190,7 +190,10 @@ class HttpQueueChannel extends AbstractChannel
      */
     protected function sendQueue(array $queue)
     {
-        $this->chainSendRequest($queue, $this->createClient());
+        $promise = $this->chainSendRequest($queue, $this->createClient());
+        if ($promise) {
+            $promise->wait();
+        }
     }
 
     /**
@@ -404,9 +407,10 @@ class HttpQueueChannel extends AbstractChannel
                     default:
                         throw new SendingException('Unexpected fail handler type: ' . $onFail);
                 }
+            } else {
+                $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));
             }
 
-            $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));
             $promise = $this->chainSendRequest($queue, $client);
             if ($promise) {
                 $promise->wait();
@@ -432,7 +436,10 @@ class HttpQueueChannel extends AbstractChannel
             $onFail = $this->getOnFailWithFallback($request);
             switch ($onFail) {
                 case RequestConfig::CFG_ON_FAIL_PROCEED:
-                    $this->chainSendRequest($queue, $client)->wait();
+                    $promise = $this->chainSendRequest($queue, $client);
+                    if ($promise) {
+                        $promise->wait();
+                    }
                     break;
 
                 case RequestConfig::CFG_ON_FAIL_ABORT:

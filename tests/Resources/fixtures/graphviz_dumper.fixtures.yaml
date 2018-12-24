@@ -1,7 +1,7 @@
 dumpProvider:
     -   input:
-            - { id: A, refs: [B] }
-            - { id: B, refs: [] }
+            - { id: A, refs: [] }
+            - { id: B, refs: [A] }
         options: {}
         output: |
             digraph G {
@@ -14,9 +14,9 @@ dumpProvider:
             }
 
     -   input:
-            - { id: A, refs: [B,C] }
-            - { id: B, refs: [] }
-            - { id: C, refs: [] }
+            - { id: A, refs: [] }
+            - { id: B, refs: [A] }
+            - { id: C, refs: [A] }
         options: {}
         output: |
             digraph G {
@@ -31,10 +31,10 @@ dumpProvider:
             }
 
     -   input:
-            - { id: A, refs: [B,C] }
-            - { id: B, refs: [C] }
-            - { id: C, refs: [D] }
-            - { id: D, refs: [] }
+            - { id: A, refs: [] }
+            - { id: B, refs: [A] }
+            - { id: C, refs: [A,B] }
+            - { id: D, refs: [C] }
         options: {edge: {color: green}}
         output: |
             digraph G {

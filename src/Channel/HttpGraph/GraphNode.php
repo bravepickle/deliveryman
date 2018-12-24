@@ -9,7 +9,6 @@ namespace Deliveryman\Channel\HttpGraph;
 
 use Deliveryman\Entity\HttpGraph\HttpRequest;
 use Deliveryman\Entity\IdentifiableInterface;
-use Deliveryman\Exception\LogicException;
 
 /**
  * Class GraphNode
@@ -115,12 +114,10 @@ class GraphNode implements IdentifiableInterface
     /**
      * @param GraphNode $node
      * @return $this
-     * @throws LogicException
      */
     public function addSuccessor(GraphNode $node)
     {
         $this->successors[$node->getId()] = $node;
-        $node->addPredecessor($this);
 
         return $this;
     }

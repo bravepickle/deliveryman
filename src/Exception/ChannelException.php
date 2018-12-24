@@ -7,6 +7,7 @@
 namespace Deliveryman\Exception;
 
 
+use Deliveryman\Entity\HttpGraph\HttpRequest;
 use Deliveryman\Entity\Request;
 
 class ChannelException extends BaseException
@@ -20,23 +21,23 @@ class ChannelException extends BaseException
     protected $message = self::MSG_DEFAULT;
 
     /**
-     * @var Request|null
+     * @var Request|HttpRequest|null
      */
     protected $request;
 
     /**
-     * @return Request|null
+     * @return Request|HttpRequest|null
      */
-    public function getRequest(): ?Request
+    public function getRequest()
     {
         return $this->request;
     }
 
     /**
-     * @param Request|null $request
+     * @param Request|HttpRequest null $request
      * @return ChannelException
      */
-    public function setRequest(?Request $request): ChannelException
+    public function setRequest($request): ChannelException
     {
         $this->request = $request;
         return $this;

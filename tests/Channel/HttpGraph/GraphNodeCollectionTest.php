@@ -57,7 +57,7 @@ class GraphNodeCollectionTest extends TestCase
             $actualTailIds[] = $node->getId();
         }
 
-        $this->assertEquals(['foo', 'baz'], $actualTailIds);
+        $this->assertEquals(['bar', 'baz'], $actualTailIds);
     }
 
     /**
@@ -82,9 +82,6 @@ class GraphNodeCollectionTest extends TestCase
         foreach ($expected as $arrow) {
             $expectedKeys[] = array_keys($arrow);
         }
-
-//        print_r($expectedKeys);
-//        print_r($actualKeys);
 
         $this->assertEquals($expectedKeys, $actualKeys);
         $this->assertEquals($expected, $actual);

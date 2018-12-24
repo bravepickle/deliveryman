@@ -2,15 +2,19 @@
 
 namespace Deliveryman\Channel;
 
+use Deliveryman\Channel\HttpGraph\GraphNode;
+use Deliveryman\Channel\HttpGraph\GraphNodeCollection;
+use Deliveryman\Channel\HttpGraph\GraphTreeBuilder;
 use Deliveryman\Entity\BatchRequest;
+use Deliveryman\Entity\HttpGraph\HttpRequest;
 use Deliveryman\Entity\HttpQueue\ChannelConfig;
-use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestConfig;
 use Deliveryman\Entity\HttpHeader;
 use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Entity\ResponseItemInterface;
 use Deliveryman\EventListener\BuildResponseEvent;
 use Deliveryman\Exception\ChannelException;
+use Deliveryman\Exception\LogicException;
 use Deliveryman\Exception\SendingException;
 use Deliveryman\Service\ConfigManager;
 use GuzzleHttp\Client;
@@ -44,6 +48,9 @@ class HttpGraphChannel extends AbstractChannel
     const OPT_CONFIG_MERGE = 'config_merge';
     const OPT_RESOURCE_FORMAT = 'resource_format';
 
+    const NODE_STATE_SEND_STARTED = 1;
+    const NODE_STATE_SEND_FINISHED = 2;
+
     /**
      * @var ConfigManager
      */
@@ -70,6 +77,16 @@ class HttpGraphChannel extends AbstractChannel
     protected $dispatcher;
 
     /**
+     * @var GraphTreeBuilder
+     */
+    protected $treeBuilder;
+
+    /**
+     * @var GraphNodeCollection
+     */
+    protected $nodesCollection;
+
+    /**
      * Sender constructor.
      * @param ConfigManager $configManager
      * @param RequestStack|null $requestStack
@@ -84,6 +101,7 @@ class HttpGraphChannel extends AbstractChannel
         $this->configManager = $configManager;
         $this->requestStack = $requestStack;
         $this->dispatcher = $dispatcher;
+        $this->treeBuilder = new GraphTreeBuilder();
     }
 
     /**
@@ -126,6 +144,7 @@ class HttpGraphChannel extends AbstractChannel
     /**
      * @inheritdoc
      * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Deliveryman\Exception\LogicException
      */
     public function send(BatchRequest $batchRequest)
     {
@@ -136,19 +155,27 @@ class HttpGraphChannel extends AbstractChannel
             return; // no data found to process
         }
 
-//        $queues = $batchRequest->getQueues();
         if ($this->hasSingleRequest()) {
             $requests = $this->batchRequest->getData();
             $request = reset($requests);
-
-//            var_dump($request);
-//            die("\n" . __METHOD__ . ":" . __FILE__ . ":" . __LINE__ . "\n");
             $this->sendRequest($request);
-//        } elseif ($this->hasSingleQueue($queues)) {
-//            $this->sendQueue($this->getFirstQueue($queues));
+
+            return;
+        }
+
+        $this->nodesCollection = new GraphNodeCollection(
+            $this->treeBuilder->buildNodesFromRequests($this->batchRequest->getData())
+        );
+
+        if ($this->hasSingleArrow()) {
+            $this->sendSingleArrow();
+
+            return;
 //        } else {
 //            $this->sendMultiQueues($queues);
         }
+
+//        die("\n" . __METHOD__ . ":" . __FILE__ . ":" . __LINE__ . "\n");
     }
 
 //    /**
@@ -171,35 +198,48 @@ class HttpGraphChannel extends AbstractChannel
 //        Promise\settle($promises)->wait();
 //    }
 
-//    /**
-//     * Chain queue of requests
-//     * @param array|null $queue
-//     * @param Client $client
-//     * @return Promise\PromiseInterface|null
-//     * @throws \Psr\Cache\InvalidArgumentException
-//     */
-//    protected function chainSendRequest(?array $queue, Client $client)
-//    {
-//        if (!$queue) {
-//            return null;
-//        }
-//
-//        /** @var Request $request */
-//        $request = array_shift($queue);
-//        if ($request) {
-//            $options = $this->buildRequestOptions($request);
-//
-//            return $client->requestAsync($request->getMethod(), $request->getUri(), $options)
-//                ->then($this->getChainFulfilledCallback($queue, $client, $request),
-//                    $this->getChainRejectedCallback($queue, $client, $request));
-//        }
-//
-//        return null;
-//    }
+    /**
+     * Chain queue of requests
+     * @param GraphNode $node
+     * @param Client $client
+     * @return Promise\PromiseInterface|null
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws LogicException
+     */
+    protected function chainSendRequest(GraphNode $node, Client $client)
+    {
+        /** @var HttpRequest $request */
+        $request = $node->getData()['request'] ?? null;
+        if (!$request) {
+            throw new LogicException('Request data was not found in node\'s payload.');
+        }
+
+        $options = $this->buildRequestOptions($request);
+        $this->setNodeState($node, self::NODE_STATE_SEND_STARTED);
+        // TODO: add event dispatching
+
+        return $client->requestAsync($request->getMethod(), $request->getUri(), $options)
+            ->then($this->getChainFulfilledCallback($node, $client, $request),
+                $this->getChainRejectedCallback($node, $client, $request));
+    }
+
+    /**
+     * @param GraphNode $node
+     * @param int $state
+     * @return $this
+     */
+    protected function setNodeState(GraphNode $node, int $state): self
+    {
+        $payload = $node->getData();
+        $payload['state'] = $state;
+        $node->setData($payload);
+
+        return $this;
+    }
 
 //    /**
 //     * Send requests queue
-//     * @param array|Request[] $queue
+//     * @param array|HttpRequest[] $queue
 //     * @return array|Response[]
 //     * @throws \Psr\Cache\InvalidArgumentException
 //     */
@@ -218,10 +258,10 @@ class HttpGraphChannel extends AbstractChannel
 
     /**
      * Send request synchronously
-     * @param Request $request
+     * @param HttpRequest $request
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function sendRequest(Request $request)
+    protected function sendRequest(HttpRequest $request)
     {
         $options = $this->buildRequestOptions($request);
 
@@ -237,35 +277,17 @@ class HttpGraphChannel extends AbstractChannel
     {
         return count($this->batchRequest->getData()) === 1;
     }
-//
-//    /**
-//     * @param array $queues
-//     * @return bool
-//     */
-//    protected function hasSingleQueue(array $queues): bool
-//    {
-//        return count($queues) === 1;
-//    }
-//
-//    /**
-//     * @param array $queues
-//     * @return Request
-//     */
-//    protected function getFirstRequest(array $queues)
-//    {
-//        $queue = $this->getFirstQueue($queues);
-//
-//        return reset($queue);
-//    }
 
-//    /**
-//     * @param array $queues
-//     * @return array
-//     */
-//    protected function getFirstQueue(array $queues)
-//    {
-//        return reset($queues);
-//    }
+    /**
+     * @return bool
+     */
+    protected function hasSingleArrow(): bool
+    {
+        $iterator = $this->nodesCollection->arrowTailsIterator();
+        $iterator->rewind();
+        $iterator->next();
+        return !$iterator->valid(); // check if next value exists in iterating loop
+    }
 
     /**
      * @return string
@@ -276,11 +298,11 @@ class HttpGraphChannel extends AbstractChannel
     }
 
     /**
-     * @param Request $request
+     * @param HttpRequest $request
      * @return array
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function buildRequestOptions(Request $request): array
+    protected function buildRequestOptions(HttpRequest $request): array
     {
         $options = [];
         if ($request->getQuery()) {
@@ -310,12 +332,12 @@ class HttpGraphChannel extends AbstractChannel
     }
 
     /**
-     * @param Request $request
+     * @param HttpRequest $request
      * @return array
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws ChannelException
      */
-    protected function getExpectedStatusCodesWithFallback(Request $request)
+    protected function getExpectedStatusCodesWithFallback(HttpRequest $request)
     {
         $globalConfig = $this->batchRequest->getConfig() ? $this->batchRequest->getConfig()->getChannel() : null;
         $requestConfig = $request->getConfig() ? $request->getConfig()->getChannel() : null;
@@ -325,11 +347,11 @@ class HttpGraphChannel extends AbstractChannel
     }
 
     /**
-     * @param Request $request
+     * @param HttpRequest $request
      * @return string|null
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function getOnFailWithFallback(Request $request)
+    protected function getOnFailWithFallback(HttpRequest $request)
     {
         if ($request && $request->getConfig() && $request->getConfig()->getOnFail()) {
             return $request->getConfig()->getOnFail();
@@ -391,84 +413,130 @@ class HttpGraphChannel extends AbstractChannel
         }
     }
 
-//    /**
-//     * @param array|null $queue
-//     * @param Client $client
-//     * @param Request $request
-//     * @return \Closure
-//     */
-//    protected function getChainFulfilledCallback(?array $queue, Client $client, Request $request): \Closure
-//    {
-//        return function (ResponseInterface $response) use ($client, $queue, $request) {
-//            if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request))) {
-//                $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
-//                $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
-//
-//                switch ($request->getConfig()->getOnFail()) {
-//                    case RequestConfig::CFG_ON_FAIL_PROCEED:
-//                        // do nothing
-//                        break;
-//
-//                    case RequestConfig::CFG_ON_FAIL_ABORT:
-//                        throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
-//                            ->setRequest($request);
-//
-//                    case RequestConfig::CFG_ON_FAIL_ABORT_QUEUE:
-//                        return; // stop chaining requests from queue
-//
-//                    default:
-//                        throw new SendingException('Unexpected fail handler type: ' .
-//                            $request->getConfig()->getOnFail());
-//                }
-//            }
-//
-//            $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));
-//            $promise = $this->chainSendRequest($queue, $client);
-//            if ($promise) {
-//                $promise->wait();
-//            }
-//        };
-//    }
-
-//    /**
-//     * @param array|null $queue
-//     * @param Client $client
-//     * @param Request $request
-//     * @return \Closure
-//     */
-//    protected function getChainRejectedCallback(?array $queue, Client $client, Request $request): \Closure
-//    {
-//        return function ($e) use ($client, $queue, $request) {
-//            // TODO: dispatch event on fail
-//            $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
-//            if ($e instanceof RequestException && $e->getResponse()) {
-//                $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $e->getResponse()));
-//            }
-//
-//            switch ($request->getConfig()->getOnFail()) {
-//                case RequestConfig::CFG_ON_FAIL_PROCEED:
-//                    $this->chainSendRequest($queue, $client)->wait();
-//                    break;
-//
-//                case RequestConfig::CFG_ON_FAIL_ABORT:
-//                    throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
-//                        ->setRequest($request);
-//
-//                case RequestConfig::CFG_ON_FAIL_ABORT_QUEUE:
-//                    return; // stop chaining requests from queue
-//
-//                default:
-//                    throw new SendingException('Unexpected fail handler type: ' .
-//                        $request->getConfig()->getOnFail());
-//            }
-//        };
-//    }
-
     /**
-     * @param Request $request
+     * @param GraphNode $node
+     * @param Client $client
+     * @param HttpRequest $request
      * @return \Closure
      */
-    protected function getSendFulfilledCallback(Request $request): \Closure
+    protected function getChainFulfilledCallback(GraphNode $node, Client $client, HttpRequest $request): \Closure
+    {
+        return function (ResponseInterface $response) use ($client, $node, $request) {
+            $this->setNodeState($node, self::NODE_STATE_SEND_FINISHED);
+            if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request))) {
+                $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
+                $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
+
+                switch ($request->getConfig()->getOnFail()) {
+                    case RequestConfig::CFG_ON_FAIL_PROCEED:
+                        // do nothing
+                        break;
+
+                    case RequestConfig::CFG_ON_FAIL_ABORT:
+                        throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
+                            ->setRequest($request);
+
+                    case RequestConfig::CFG_ON_FAIL_ABORT_QUEUE:
+                        return; // stop chaining requests from queue
+
+                    default:
+                        throw new SendingException('Unexpected fail handler type: ' .
+                            $request->getConfig()->getOnFail());
+                }
+            } else {
+                $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));
+            }
+
+            $this->chainSendNodesSuccessors($node, $client);
+        };
+    }
+
+    /**
+     * @param GraphNode $node
+     * @param Client $client
+     * @throws LogicException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function chainSendNodesSuccessors(GraphNode $node, Client $client)
+    {
+        $promises = [];
+        foreach ($node->getSuccessors() as $successor) {
+            if ($this->nodeReadyToBeSent($successor)) {
+                $promise = $this->chainSendRequest($successor, $client);
+                if ($promise) {
+                    $promises[] = $promise;
+                }
+            }
+        }
+
+        if (!$promises) {
+            return; // reached arrow head
+        }
+
+        if (!isset($promises[1])) { // have single request within successor nodes
+            $promises[0]->wait();
+
+            return;
+        }
+
+        Promise\settle($promises)->wait(); // multiple promises handle in parallel
+    }
+
+    protected function nodeReadyToBeSent(GraphNode $node): bool
+    {
+        foreach ($node->getPredecessors() as $predecessor) {
+            if (empty($predecessor->getData()['state']) ||
+                $predecessor->getData()['state'] === self::NODE_STATE_SEND_STARTED) {
+                return false; // some predecessors need to be processed still
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param GraphNode $node
+     * @param Client $client
+     * @param HttpRequest $request
+     * @return \Closure
+     */
+    protected function getChainRejectedCallback(GraphNode $node, Client $client, HttpRequest $request): \Closure
+    {
+        return function ($e) use ($client, $node, $request) {
+            $this->setNodeState($node, self::NODE_STATE_SEND_FINISHED);
+            // TODO: dispatch event on fail
+            $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
+            if ($e instanceof RequestException && $e->getResponse()) {
+                $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $e->getResponse()));
+            }
+
+            $onFail = $this->getOnFailWithFallback($request);
+            switch ($onFail) {
+                case RequestConfig::CFG_ON_FAIL_PROCEED:
+                    $promise = $this->chainSendRequest($node, $client);
+                    if ($promise) {
+                        $promise->wait();
+                    }
+                    break;
+
+                case RequestConfig::CFG_ON_FAIL_ABORT:
+                    throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
+                        ->setRequest($request);
+
+                case RequestConfig::CFG_ON_FAIL_ABORT_QUEUE:
+                    return; // stop chaining requests from queue
+
+                default:
+                    throw new SendingException('Unexpected fail handler type: ' . $onFail);
+            }
+        };
+    }
+
+    /**
+     * @param HttpRequest $request
+     * @return \Closure
+     */
+    protected function getSendFulfilledCallback(HttpRequest $request): \Closure
     {
         return function (ResponseInterface $response) use ($request) {
             if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request))) {
@@ -490,10 +558,10 @@ class HttpGraphChannel extends AbstractChannel
     }
 
     /**
-     * @param Request $request
+     * @param HttpRequest $request
      * @return \Closure
      */
-    protected function getSendRejectedCallback(Request $request): \Closure
+    protected function getSendRejectedCallback(HttpRequest $request): \Closure
     {
         return function ($e) use ($request) {
             $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
@@ -560,12 +628,12 @@ class HttpGraphChannel extends AbstractChannel
     }
 
     /**
-     * @param Request $request
+     * @param HttpRequest $request
      * @param array|null $headers
      * @return array|void
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function appendInitialRequestHeaders(Request $request, ?array &$headers)
+    protected function appendInitialRequestHeaders(HttpRequest $request, ?array &$headers)
     {
         if (!$this->requestStack) {
             return;
@@ -593,13 +661,13 @@ class HttpGraphChannel extends AbstractChannel
     }
 
     /**
-     * @param Request $request
+     * @param HttpRequest $request
      * @param Response|ResponseInterface $srcResponse
      * @return HttpResponse
      * @throws ChannelException
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function buildResponseData(Request $request, $srcResponse): HttpResponse
+    protected function buildResponseData(HttpRequest $request, $srcResponse): HttpResponse
     {
         // TODO: dispatcher extend with config request resulting object
         // TODO: add headers from config
@@ -677,6 +745,23 @@ class HttpGraphChannel extends AbstractChannel
                 // TODO: implement FileStorageInterface to abstract place for storing files
             default:
                 throw new ChannelException('Not supported format: ' . $format);
+        }
+    }
+
+    /**
+     * @throws LogicException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function sendSingleArrow(): void
+    {
+        $client = $this->createClient();
+        /** @var GraphNode $node */
+        foreach ($this->nodesCollection->arrowTailsIterator() as $node) {
+            $promise = $this->chainSendRequest($node, $client);
+            if ($promise) {
+                $promise->wait();
+            }
+            break;
         }
     }
 

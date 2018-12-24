@@ -8,6 +8,7 @@ namespace DeliverymanTest\Channel;
 
 use Deliveryman\Channel\HttpGraphChannel;
 use Deliveryman\Entity\BatchRequest;
+use Deliveryman\Entity\HttpGraph\HttpRequest;
 use Deliveryman\Entity\HttpHeader;
 use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Service\ConfigManager;
@@ -40,6 +41,7 @@ class HttpGraphChannelTest extends TestCase
      * @param array $expected
      * @throws \Deliveryman\Exception\ChannelException
      * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Deliveryman\Exception\LogicException
      */
     public function testSend(array $appConfig, BatchRequest $input, array $responses, array $expectedRequests, array $expected)
     {
@@ -69,10 +71,6 @@ class HttpGraphChannelTest extends TestCase
         $this->assertEquals($expected['ok'], $channel->getOkResponses(), 'Success responses differ');
         $this->assertEquals($expected['failed'], $channel->getFailedResponses(), 'Failed responses differ');
         $this->assertEquals($expected['errors'], $channel->getErrors(), 'Error responses differ');
-
-//        var_dump($appConfig);
-//        var_dump($input);
-//        die("\n" . __METHOD__ . ":" . __FILE__ . ":" . __LINE__ . "\n");
     }
 
 
@@ -93,7 +91,17 @@ class HttpGraphChannelTest extends TestCase
             } else {
                 $body = [];
                 foreach ($datum['input']['data'] as $req) {
-                    $body[] = (new \Deliveryman\Entity\Request())
+                    if (!empty($req['headers'])) {
+                        $headers = [];
+                        foreach ($req['headers'] as $header) {
+                            $headers[] = (new HttpHeader())
+                                ->setName($header['name'])
+                                ->setValue($header['value']);
+                        }
+                        $req['headers'] = $headers;
+                    }
+
+                    $body[] = (new HttpRequest())
                         ->setConfig($req['config'] ?? null)
                         ->setId($req['id'] ?? null)
                         ->setHeaders($req['headers'] ?? null)
@@ -101,6 +109,7 @@ class HttpGraphChannelTest extends TestCase
                         ->setUri($req['uri'] ?? null)
                         ->setQuery($req['query'] ?? null)
                         ->setData($req['data'] ?? null)
+                        ->setReq($req['req'] ?? [])
                     ;
                 }
             }

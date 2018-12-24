@@ -82,7 +82,9 @@ class GraphTreeBuilder
         foreach ($requests as $request) {
             $nodes[] = (new GraphNode())
                 ->setId($request->getId())
-                ->setReferenceIds($request->getReq());
+                ->setReferenceIds($request->getReq())
+                ->setData(['request' => $request])
+            ;
         }
 
         return $this->buildNodes($nodes);
@@ -138,7 +140,8 @@ class GraphTreeBuilder
     {
         foreach ($nodesMap as $node) {
             $this->walkRefNodes($nodesMap, $node, function (GraphNode $targetNode, GraphNode $srcNode) {
-                $srcNode->addSuccessor($targetNode);
+                $srcNode->addPredecessor($targetNode);
+                $targetNode->addSuccessor($srcNode);
             });
         }
     }

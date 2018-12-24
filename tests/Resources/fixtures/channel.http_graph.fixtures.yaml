@@ -1,5 +1,5 @@
 sendProvider:
-    -
+    -   # check single request in batch
         config:
             domains:
                 - 'http://example.com'
@@ -33,4 +33,106 @@ sendProvider:
                     statusCode: 200
                     data: { id: 1 }
             failed: []
+            errors: []
+
+    -   # test failing response with single request
+        config:
+            on_fail: proceed
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+                    expected_status_codes: [200]
+
+        input:
+            data:
+                - { uri: 'http://example.com/foo', id: ask-foo }
+
+        responses:
+            -   statusCode: 404
+                headers:
+                    Content-Type: [application/json]
+                data: '{"error":"Not Found"}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                data: ''
+
+        output:
+            ok: []
+            failed:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: Content-Type, value: application/json }]
+                    statusCode: 404
+                    data: { error: "Not Found" }
+            errors:
+                ask-foo: 'Request failed to complete.'
+
+    -   # test 2 requests with additional headers for responses and requests and references
+        config:
+            domains:
+                - 'http://dev.example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+                    expected_status_codes: [200, 201]
+                    receiver_headers: [Set-Cookie, Location, Content-Type]
+
+        input:
+            data:
+                - { uri: 'http://dev.example.com/users/2', id: read_user, req: [add_user] }
+                -   uri: 'http://dev.example.com/users/create'
+                    id: add_user
+                    headers: [{name: X-Auth, value: 'api-key'}]
+                    method: POST
+                    data: { name: Jacky }
+
+        responses:
+            -   statusCode: 201
+                headers: { Location: ['http://dev.example.com/users/32'] }
+                data: ''
+
+            -   statusCode: 200
+                headers: { Set-Cookie: ['_UID=abc'] }
+                data: '{"id": "Johnny"}'
+
+        sentRequests:
+            -   method: POST
+                uri: 'http://dev.example.com/users/create'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [dev.example.com]
+                    X-Auth: [api-key]
+                    Content-Length: [16]
+                    Content-Type: [application/json]
+                data: '{"name":"Jacky"}'
+
+            -   method: GET
+                uri: 'http://dev.example.com/users/2'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [dev.example.com]
+
+        output:
+            failed: []
+            ok:
+                add_user:
+                    id: add_user
+                    headers:
+                        - { name: Location, value: 'http://dev.example.com/users/32' }
+                    statusCode: 201
+                    data: ''
+
+                read_user:
+                    id: read_user
+                    headers:
+                        - { name: Set-Cookie, value: '_UID=abc' }
+                    statusCode: 200
+                    data: { id: "Johnny" }
             errors: []

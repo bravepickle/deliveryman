@@ -257,6 +257,7 @@ class HttpQueueChannelTest extends TestCase
                         'debug' => false,
                         'allow_redirects' => false,
                     ],
+                    'expected_status_codes' => [400, 200, 301],
                 ]
             ],
             'on_fail' => 'proceed',
