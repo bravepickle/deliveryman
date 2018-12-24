@@ -186,20 +186,11 @@ class HttpQueueChannel extends AbstractChannel
     /**
      * Send requests queue
      * @param array|Request[] $queue
-     * @return array|Response[]
      * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function sendQueue(array $queue)
     {
-        $responses = [];
-        foreach ($queue as $request) {
-            $response = $this->sendRequest($request);
-            if ($response) {
-                $responses[$request->getId()] = $response;
-            }
-        }
-
-        return $responses;
+        $this->chainSendRequest($queue, $this->createClient());
     }
 
     /**
@@ -397,7 +388,8 @@ class HttpQueueChannel extends AbstractChannel
                 $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
-                switch ($request->getConfig()->getOnFail()) {
+                $onFail = $this->getOnFailWithFallback($request);
+                switch ($onFail) {
                     case RequestConfig::CFG_ON_FAIL_PROCEED:
                         // do nothing
                         break;
@@ -410,8 +402,7 @@ class HttpQueueChannel extends AbstractChannel
                         return; // stop chaining requests from queue
 
                     default:
-                        throw new SendingException('Unexpected fail handler type: ' .
-                            $request->getConfig()->getOnFail());
+                        throw new SendingException('Unexpected fail handler type: ' . $onFail);
                 }
             }
 
@@ -438,7 +429,8 @@ class HttpQueueChannel extends AbstractChannel
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $e->getResponse()));
             }
 
-            switch ($request->getConfig()->getOnFail()) {
+            $onFail = $this->getOnFailWithFallback($request);
+            switch ($onFail) {
                 case RequestConfig::CFG_ON_FAIL_PROCEED:
                     $this->chainSendRequest($queue, $client)->wait();
                     break;
@@ -451,8 +443,7 @@ class HttpQueueChannel extends AbstractChannel
                     return; // stop chaining requests from queue
 
                 default:
-                    throw new SendingException('Unexpected fail handler type: ' .
-                        $request->getConfig()->getOnFail());
+                    throw new SendingException('Unexpected fail handler type: ' . $onFail);
             }
         };
     }
@@ -464,18 +455,18 @@ class HttpQueueChannel extends AbstractChannel
     protected function getSendFulfilledCallback(Request $request): \Closure
     {
         return function (ResponseInterface $response) use ($request) {
-            if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request)) &&
-                in_array($this->getOnFailWithFallback($request), [
-                    RequestConfig::CFG_ON_FAIL_ABORT,
-                    RequestConfig::CFG_ON_FAIL_ABORT_QUEUE,
-                ])
-            ) {
-                // todo: save failed objects and succeeded responses in separate data sets
+            if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request))) {
                 $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
-                throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
-                    ->setRequest($request);
+                if (in_array($this->getOnFailWithFallback($request), [
+                    RequestConfig::CFG_ON_FAIL_ABORT,
+                ])) {
+                    throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
+                        ->setRequest($request);
+                }
+
+                return;
             }
 
             $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));

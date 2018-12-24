@@ -471,18 +471,18 @@ class HttpGraphChannel extends AbstractChannel
     protected function getSendFulfilledCallback(Request $request): \Closure
     {
         return function (ResponseInterface $response) use ($request) {
-            if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request)) &&
-                in_array($this->getOnFailWithFallback($request), [
-                    RequestConfig::CFG_ON_FAIL_ABORT,
-                    RequestConfig::CFG_ON_FAIL_ABORT_QUEUE,
-                ])
-            ) {
-                // todo: save failed objects and succeeded responses in separate data sets
+            if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request))) {
                 $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
-                throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
-                    ->setRequest($request);
+                if (in_array($this->getOnFailWithFallback($request), [
+                    RequestConfig::CFG_ON_FAIL_ABORT,
+                ])) {
+                    throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
+                        ->setRequest($request);
+                }
+
+                return;
             }
 
             $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));
