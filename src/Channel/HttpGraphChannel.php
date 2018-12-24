@@ -39,6 +39,7 @@ class HttpGraphChannel extends AbstractChannel
     const NAME = 'http_graph';
 
     const MSG_REQUEST_FAILED = 'Request failed to complete.';
+    const MSG_UNDEFINED_REQUESTS = 'Requests must be defined.';
 
     const OPT_RECEIVER_HEADERS = 'receiver_headers';
     const OPT_SENDER_HEADERS = 'sender_headers';
@@ -152,7 +153,7 @@ class HttpGraphChannel extends AbstractChannel
 
         // TODO: validate that input data is array
         if (!$this->batchRequest->getData()) {
-            return; // no data found to process
+            throw new ChannelException(self::MSG_UNDEFINED_REQUESTS);
         }
 
         if ($this->hasSingleRequest()) {
@@ -406,7 +407,8 @@ class HttpGraphChannel extends AbstractChannel
                 $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
-                switch ($request->getConfig()->getOnFail()) {
+                $onFail = $this->getOnFailWithFallback($request);
+                switch ($onFail) {
                     case RequestConfig::CFG_ON_FAIL_PROCEED:
                         // do nothing
                         break;
@@ -419,8 +421,7 @@ class HttpGraphChannel extends AbstractChannel
                         return; // stop chaining requests from queue
 
                     default:
-                        throw new SendingException('Unexpected fail handler type: ' .
-                            $request->getConfig()->getOnFail());
+                        throw new SendingException('Unexpected fail handler type: ' . $onFail);
                 }
             } else {
                 $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));

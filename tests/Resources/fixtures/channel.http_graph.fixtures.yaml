@@ -202,3 +202,101 @@ sendProvider:
                     data: 'user1-data'
 
             errors: []
+
+
+    -   # check single request with plain text and query data
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+
+        input:
+            data:
+                -
+                    uri: 'http://example.com/foo?b=b-val'
+                    id: foo
+                    query: {a: a-val}
+                    method: POST
+                    headers: [{name: Content-Type, value: 'application/x-www-form-urlencoded'}]
+                    data: 'form=data&foo=bar'
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [text/plain]
+                data: 'done'
+
+        sentRequests:
+            -   method: POST
+                uri: 'http://example.com/foo?a=a-val'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                    Content-Type: [application/x-www-form-urlencoded]
+                    Content-Length: [17]
+                data: 'form=data&foo=bar'
+
+        output:
+            ok:
+                foo:
+                    id: foo
+                    headers: [{ name: Content-Type, value: text/plain }]
+                    statusCode: 200
+                    data: 'done'
+            failed: []
+            errors: []
+
+    -   # config: request.on_fail=proceed
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+            on_fail: proceed
+        input:
+            data:
+                - { uri: 'http://example.com/foo', id: ask-foo, config: {on_fail: proceed} }
+                - { uri: 'http://example.com/bar', id: ask-bar, req: [ask-foo] }
+
+        responses:
+            -   statusCode: 400
+                headers: []
+                data: 'Bad request'
+
+            -   statusCode: 403
+                headers: []
+                data: 'Forbidden'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+
+            -   method: GET
+                uri: 'http://example.com/bar'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+
+        output:
+            failed:
+                ask-foo:
+                    id: ask-foo
+                    headers: []
+                    statusCode: 400
+                    data: Bad request
+                ask-bar:
+                    id: ask-bar
+                    headers: []
+                    statusCode: 403
+                    data: Forbidden
+            ok: []
+            errors:
+                ask-foo: 'Request failed to complete.'
+                ask-bar: 'Request failed to complete.'
+

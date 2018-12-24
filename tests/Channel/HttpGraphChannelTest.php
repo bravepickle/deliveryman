@@ -11,6 +11,8 @@ use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\HttpGraph\HttpRequest;
 use Deliveryman\Entity\HttpHeader;
 use Deliveryman\Entity\HttpResponse;
+use Deliveryman\Entity\RequestConfig;
+use Deliveryman\Exception\ChannelException;
 use Deliveryman\Service\ConfigManager;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -101,6 +103,15 @@ class HttpGraphChannelTest extends TestCase
                         $req['headers'] = $headers;
                     }
 
+                    if (!empty($req['config'])) {
+                        $req['config'] = (new RequestConfig())
+                            ->setConfigMerge($req['config']['config_merge'] ?? null)
+                            ->setOnFail($req['config']['on_fail'] ?? null)
+                            ->setSilent($req['config']['silent'] ?? null)
+                            ->setFormat($req['config']['format'] ?? null)
+                        ;
+                    }
+
                     $body[] = (new HttpRequest())
                         ->setConfig($req['config'] ?? null)
                         ->setId($req['id'] ?? null)
@@ -112,6 +123,15 @@ class HttpGraphChannelTest extends TestCase
                         ->setReq($req['req'] ?? [])
                     ;
                 }
+            }
+
+            if (!empty($datum['input']['config'])) {
+                $datum['input']['config'] = (new RequestConfig())
+                    ->setConfigMerge($datum['input']['config']['config_merge'] ?? null)
+                    ->setOnFail($datum['input']['config']['on_fail'] ?? null)
+                    ->setSilent($datum['input']['config']['silent'] ?? null)
+                    ->setFormat($datum['input']['config']['format'] ?? null)
+                ;
             }
 
             $data[$key]['input'] = (new BatchRequest())
@@ -200,5 +220,22 @@ class HttpGraphChannelTest extends TestCase
         self::$fixtures = Yaml::parseFile(__DIR__ . '/../Resources/fixtures/channel.http_graph.fixtures.yaml');
 
         return self::$fixtures[$name] ?? [];
+    }
+
+    /**
+     * @throws ChannelException
+     * @throws \Deliveryman\Exception\LogicException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function testSendNoRequests()
+    {
+        $this->expectExceptionMessage(ChannelException::class);
+        $this->expectExceptionMessage('Requests must be defined.');
+
+        $batch = new BatchRequest();
+        $configManager = new ConfigManager();
+
+        $channel = new HttpGraphChannel($configManager);
+        $channel->send($batch);
     }
 }
