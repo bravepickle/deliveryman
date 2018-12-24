@@ -171,32 +171,30 @@ class HttpGraphChannel extends AbstractChannel
             $this->sendSingleArrow();
 
             return;
-//        } else {
-//            $this->sendMultiQueues($queues);
         }
 
-//        die("\n" . __METHOD__ . ":" . __FILE__ . ":" . __LINE__ . "\n");
+        $this->sendMultiArrows();
     }
 
-//    /**
-//     * Send multiple queues concurrently
-//     * @param array $queues
-//     * @throws \Psr\Cache\InvalidArgumentException
-//     */
-//    protected function sendMultiQueues(array $queues)
-//    {
-//        $client = $this->createClient();
-//        $promises = [];
-//
-//        foreach ($queues as $key => $queue) {
-//            $promise = $this->chainSendRequest($queue, $client);
-//            if ($promise) {
-//                $promises[$key] = $promise;
-//            }
-//        }
-//
-//        Promise\settle($promises)->wait();
-//    }
+    /**
+     * Send multiple queues concurrently
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws LogicException
+     */
+    protected function sendMultiArrows()
+    {
+        $client = $this->createClient();
+        $promises = [];
+
+        foreach ($this->nodesCollection->arrowTailsIterator() as $key => $node) {
+            $promise = $this->chainSendRequest($node, $client);
+            if ($promise) {
+                $promises[$key] = $promise;
+            }
+        }
+
+        Promise\settle($promises)->wait();
+    }
 
     /**
      * Chain queue of requests
@@ -236,25 +234,6 @@ class HttpGraphChannel extends AbstractChannel
 
         return $this;
     }
-
-//    /**
-//     * Send requests queue
-//     * @param array|HttpRequest[] $queue
-//     * @return array|Response[]
-//     * @throws \Psr\Cache\InvalidArgumentException
-//     */
-//    protected function sendQueue(array $queue)
-//    {
-//        $responses = [];
-//        foreach ($queue as $request) {
-//            $response = $this->sendRequest($request);
-//            if ($response) {
-//                $responses[$request->getId()] = $response;
-//            }
-//        }
-//
-//        return $responses;
-//    }
 
     /**
      * Send request synchronously

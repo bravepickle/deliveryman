@@ -122,7 +122,7 @@ class HttpGraphChannelTest extends TestCase
             foreach ($datum['responses'] as $subKey => $response) {
                 $data[$key]['responses'][$subKey] = new Response(
                     $response['statusCode'] ?? null,
-                    $response['headers'] ?? null,
+                    $response['headers'] ?? [],
                     $response['data'] ?? null
                 );
             }
@@ -131,7 +131,7 @@ class HttpGraphChannelTest extends TestCase
                 $data[$key]['sentRequests'][$subKey] = new Request(
                     $request['method'] ?? null,
                     $request['uri'] ?? null,
-                    $request['headers'] ?? null,
+                    $request['headers'] ?? [],
                     $request['data'] ?? null
                 );
             }

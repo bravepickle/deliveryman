@@ -136,3 +136,69 @@ sendProvider:
                     statusCode: 200
                     data: { id: "Johnny" }
             errors: []
+
+    -   # test multiple arrows graph
+        config:
+            domains:
+                - 'http://dev.example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+
+        input:
+            data:
+                - { uri: 'http://dev.example.com/users/1', id: user1, req: [user2] }
+                - { uri: 'http://dev.example.com/users/2', id: user2 }
+                - { uri: 'http://dev.example.com/users/3', id: user3 }
+
+        responses:
+            -   statusCode: 200
+                data: 'user2-data'
+
+            -   statusCode: 200
+                data: 'user3-data'
+
+            -   statusCode: 200
+                data: 'user1-data'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://dev.example.com/users/2'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [dev.example.com]
+
+            -   method: GET
+                uri: 'http://dev.example.com/users/3'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [dev.example.com]
+
+            -   method: GET
+                uri: 'http://dev.example.com/users/1'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [dev.example.com]
+
+        output:
+            failed: []
+            ok:
+                user2:
+                    id: user2
+                    headers: []
+                    statusCode: 200
+                    data: 'user2-data'
+
+                user3:
+                    id: user3
+                    headers: []
+                    statusCode: 200
+                    data: 'user3-data'
+
+                user1:
+                    id: user1
+                    headers: []
+                    statusCode: 200
+                    data: 'user1-data'
+
+            errors: []
