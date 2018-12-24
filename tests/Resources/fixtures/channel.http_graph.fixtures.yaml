@@ -9,44 +9,28 @@ sendProvider:
 
         input:
             data:
-                - { uri: 'http://example.com/ask-something', id: ask-something }
-                - { uri: 'http://example.com/do-something', method: PUT, data: encoded_text, req: [ask-something] }
+                - { uri: 'http://example.com/foo', id: ask-foo }
 
         responses:
             -   statusCode: 200
                 headers:
                     Content-Type: [application/json]
-                data: '{"success":true}'
-            -   statusCode: 204
-                headers:
-                    Content-Type: [application/json]
-                data: null
+                data: '{"id":1}'
 
         sentRequests:
             -   method: GET
-                uri: 'http://example.com/ask-something'
+                uri: 'http://example.com/foo'
                 headers:
                     User-Agent: [testing/1.0]
+                    Host: [example.com]
                 data: ''
-            -   method: PUT
-                uri: 'http://example.com/do-something'
-                headers:
-                    User-Agent: [testing/1.0]
-                    Content-Length: ['12']
-                data: encoded_text
 
         output:
-            data:
-                ask-something:
-                    id: ask-something
+            ok:
+                ask-foo:
+                    id: ask-foo
                     headers: [{ name: Content-Type, value: application/json }]
                     statusCode: 200
-                    data: { success: true }
-                'PUT_http://example.com/do-something':
-                    id: 'PUT_http://example.com/do-something'
-                    headers: [{ name: Content-Type, value: application/json }]
-                    statusCode: 204
-                    data: null
-            status: ok
-            errors: null
-            failed: null
+                    data: { id: 1 }
+            failed: []
+            errors: []

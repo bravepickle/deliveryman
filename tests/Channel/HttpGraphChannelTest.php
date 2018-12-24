@@ -6,10 +6,17 @@
 
 namespace DeliverymanTest\Channel;
 
+use Deliveryman\Channel\HttpGraphChannel;
 use Deliveryman\Entity\BatchRequest;
+use Deliveryman\Entity\HttpHeader;
+use Deliveryman\Entity\HttpResponse;
+use Deliveryman\Service\ConfigManager;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\RequestInterface;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -29,11 +36,40 @@ class HttpGraphChannelTest extends TestCase
      * @param array $appConfig
      * @param BatchRequest $input
      * @param array|Response[] $responses
-     * @param array|Request[] $sendRequests
+     * @param array $expectedRequests
      * @param array $expected
+     * @throws \Deliveryman\Exception\ChannelException
+     * @throws \Psr\Cache\InvalidArgumentException
      */
-    public function testSend(array $appConfig, BatchRequest $input, array $responses, array $sendRequests, array $expected)
+    public function testSend(array $appConfig, BatchRequest $input, array $responses, array $expectedRequests, array $expected)
     {
+        $mockHandler = new MockHandler($responses);
+        $handler = HandlerStack::create(function (
+            RequestInterface $request,
+            array $options
+        ) use ($mockHandler, &$expectedRequests) {
+            $expected = array_shift($expectedRequests);
+
+            $this->assertEquals($expected->getMethod(), $request->getMethod(), 'Sent request method differs from expected.');
+            $this->assertEquals($expected->getUri(), $request->getUri(), 'Sent request URI differs from expected.');
+            $this->assertEquals($expected->getHeaders(), $request->getHeaders(), 'Sent request headers differs from expected.');
+            $this->assertEquals($expected->getBody()->getContents(), $request->getBody()->getContents(), 'Sent request body differs from expected.');
+
+            return $mockHandler($request, $options);
+        });
+
+        $appConfig['channels']['http_graph']['request_options']['handler'] = $handler;
+
+        $configManager = new ConfigManager();
+        $configManager->addConfiguration($appConfig);
+
+        $channel = new HttpGraphChannel($configManager);
+        $channel->send($input);
+
+        $this->assertEquals($expected['ok'], $channel->getOkResponses(), 'Success responses differ');
+        $this->assertEquals($expected['failed'], $channel->getFailedResponses(), 'Failed responses differ');
+        $this->assertEquals($expected['errors'], $channel->getErrors(), 'Error responses differ');
+
 //        var_dump($appConfig);
 //        var_dump($input);
 //        die("\n" . __METHOD__ . ":" . __FILE__ . ":" . __LINE__ . "\n");
@@ -52,9 +88,26 @@ class HttpGraphChannelTest extends TestCase
     protected function prepareProviderData(array $data): array
     {
         foreach ($data as $key => $datum) {
+            if (empty($datum['input']['data'])) {
+                $body = $datum['input']['data'];
+            } else {
+                $body = [];
+                foreach ($datum['input']['data'] as $req) {
+                    $body[] = (new \Deliveryman\Entity\Request())
+                        ->setConfig($req['config'] ?? null)
+                        ->setId($req['id'] ?? null)
+                        ->setHeaders($req['headers'] ?? null)
+                        ->setMethod($req['method'] ?? null)
+                        ->setUri($req['uri'] ?? null)
+                        ->setQuery($req['query'] ?? null)
+                        ->setData($req['data'] ?? null)
+                    ;
+                }
+            }
+
             $data[$key]['input'] = (new BatchRequest())
                 ->setConfig($datum['input']['config'] ?? null)
-                ->setData($datum['input']['data'])
+                ->setData($body)
             ;
 
             foreach ($datum['responses'] as $subKey => $response) {
@@ -72,6 +125,52 @@ class HttpGraphChannelTest extends TestCase
                     $request['headers'] ?? null,
                     $request['data'] ?? null
                 );
+            }
+
+            if (!empty($datum['output']['ok'])) {
+                $body = [];
+                foreach ($datum['output']['ok'] as $id => $resp) {
+                    if (!empty($resp['headers'])) {
+                        $headers = [];
+                        foreach ($resp['headers'] as $header) {
+                            $headers[] = (new HttpHeader())
+                                ->setName($header['name'])
+                                ->setValue($header['value']);
+                        }
+                        $resp['headers'] = $headers;
+                    }
+
+                    $body[$id] = (new HttpResponse())
+                        ->setId($resp['id'] ?? null)
+                        ->setHeaders($resp['headers'] ?? null)
+                        ->setStatusCode($resp['statusCode'] ?? null)
+                        ->setData($resp['data'] ?? null)
+                    ;
+                }
+                $data[$key]['output']['ok'] = $body;
+            }
+
+            if (!empty($datum['output']['failed'])) {
+                $body = [];
+                foreach ($datum['output']['failed'] as $id => $resp) {
+                    if (!empty($resp['headers'])) {
+                        $headers = [];
+                        foreach ($resp['headers'] as $header) {
+                            $headers[] = (new HttpHeader())
+                                ->setName($header['name'])
+                                ->setValue($header['value']);
+                        }
+                        $resp['headers'] = $headers;
+                    }
+
+                    $body[$id] = (new HttpResponse())
+                        ->setId($resp['id'] ?? null)
+                        ->setHeaders($resp['headers'] ?? null)
+                        ->setStatusCode($resp['statusCode'] ?? null)
+                        ->setData($resp['data'] ?? null)
+                    ;
+                }
+                $data[$key]['output']['failed'] = $body;
             }
         }
 

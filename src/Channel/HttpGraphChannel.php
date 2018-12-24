@@ -32,7 +32,10 @@ use Symfony\Component\Serializer\Exception\NotEncodableValueException;
  */
 class HttpGraphChannel extends AbstractChannel
 {
+    const NAME = 'http_graph';
+
     const MSG_REQUEST_FAILED = 'Request failed to complete.';
+
     const OPT_RECEIVER_HEADERS = 'receiver_headers';
     const OPT_SENDER_HEADERS = 'sender_headers';
     const OPT_CHANNELS = 'channels';
@@ -40,7 +43,6 @@ class HttpGraphChannel extends AbstractChannel
     const OPT_EXPECTED_STATUS_CODES = 'expected_status_codes';
     const OPT_CONFIG_MERGE = 'config_merge';
     const OPT_RESOURCE_FORMAT = 'resource_format';
-    const NAME = 'http_graph';
 
     /**
      * @var ConfigManager
@@ -127,17 +129,26 @@ class HttpGraphChannel extends AbstractChannel
      */
     public function send(BatchRequest $batchRequest)
     {
-        throw new \LogicException('Implement me');
-//        $this->batchRequest = $batchRequest;
+        $this->batchRequest = $batchRequest;
+
+        // TODO: validate that input data is array
+        if (!$this->batchRequest->getData()) {
+            return; // no data found to process
+        }
+
 //        $queues = $batchRequest->getQueues();
-//        if ($this->hasSingleRequest($queues)) {
-//            $request = $this->getFirstRequest($queues);
-//            $this->sendRequest($request);
+        if ($this->hasSingleRequest()) {
+            $requests = $this->batchRequest->getData();
+            $request = reset($requests);
+
+//            var_dump($request);
+//            die("\n" . __METHOD__ . ":" . __FILE__ . ":" . __LINE__ . "\n");
+            $this->sendRequest($request);
 //        } elseif ($this->hasSingleQueue($queues)) {
 //            $this->sendQueue($this->getFirstQueue($queues));
 //        } else {
 //            $this->sendMultiQueues($queues);
-//        }
+        }
     }
 
 //    /**
@@ -205,34 +216,27 @@ class HttpGraphChannel extends AbstractChannel
 //        return $responses;
 //    }
 
-//    /**
-//     * Send request synchronously
-//     * @param Request $request
-//     * @throws \Psr\Cache\InvalidArgumentException
-//     */
-//    protected function sendRequest(Request $request)
-//    {
-//        $options = $this->buildRequestOptions($request);
-//
-//        $this->createClient()->requestAsync($request->getMethod(), $request->getUri(), $options)
-//            ->then($this->getSendFulfilledCallback($request), $this->getSendRejectedCallback($request))
-//            ->wait();
-//    }
-//
-//    /**
-//     * @param array $queues
-//     * @return bool
-//     */
-//    protected function hasSingleRequest(array $queues): bool
-//    {
-//        if (!$this->hasSingleQueue($queues)) {
-//            return false;
-//        }
-//
-//        $queue = reset($queues);
-//
-//        return count($queue) === 1;
-//    }
+    /**
+     * Send request synchronously
+     * @param Request $request
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function sendRequest(Request $request)
+    {
+        $options = $this->buildRequestOptions($request);
+
+        $this->createClient()->requestAsync($request->getMethod(), $request->getUri(), $options)
+            ->then($this->getSendFulfilledCallback($request), $this->getSendRejectedCallback($request))
+            ->wait();
+    }
+
+    /**
+     * @return bool
+     */
+    protected function hasSingleRequest(): bool
+    {
+        return count($this->batchRequest->getData()) === 1;
+    }
 //
 //    /**
 //     * @param array $queues
@@ -271,121 +275,121 @@ class HttpGraphChannel extends AbstractChannel
         return self::NAME;
     }
 
-//    /**
-//     * @param Request $request
-//     * @return array
-//     * @throws \Psr\Cache\InvalidArgumentException
-//     */
-//    protected function buildRequestOptions(Request $request): array
-//    {
-//        $options = [];
-//        if ($request->getQuery()) {
-//            $options[RequestOptions::QUERY] = $request->getQuery();
-//        }
-//
-//        if ($request->getHeaders()) {
-//            foreach ($request->getHeaders() as $header) {
-//                $options[RequestOptions::HEADERS][$header->getName()][] = $header->getValue();
-//            }
-//        } else {
-//            $options[RequestOptions::HEADERS] = [];
-//        }
-//
-//        $this->appendInitialRequestHeaders($request, $options[RequestOptions::HEADERS]);
-//
-//        // TODO: check resource input format from configs
-//        if ($request->getData()) {
-//            if (is_array($request->getData()) || is_bool($request->getData())) {
-//                $options[RequestOptions::JSON] = $request->getData(); // set JSON format
-//            } else {
-//                $options[RequestOptions::BODY] = $request->getData(); // set raw
-//            }
-//        }
-//
-//        return $options;
-//    }
+    /**
+     * @param Request $request
+     * @return array
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function buildRequestOptions(Request $request): array
+    {
+        $options = [];
+        if ($request->getQuery()) {
+            $options[RequestOptions::QUERY] = $request->getQuery();
+        }
 
-//    /**
-//     * @param Request $request
-//     * @return array
-//     * @throws \Psr\Cache\InvalidArgumentException
-//     * @throws ChannelException
-//     */
-//    protected function getExpectedStatusCodesWithFallback(Request $request)
-//    {
-//        $globalConfig = $this->batchRequest->getConfig() ? $this->batchRequest->getConfig()->getChannel() : null;
-//        $requestConfig = $request->getConfig() ? $request->getConfig()->getChannel() : null;
-//        $statusCodes = $this->mergeExpectedStatusCodes($requestConfig, $globalConfig);
-//
-//        return $statusCodes ?: $this->getChannelConfig()[self::OPT_EXPECTED_STATUS_CODES] ?? []; // fallback
-//    }
-//
-//    /**
-//     * @param Request $request
-//     * @return string|null
-//     * @throws \Psr\Cache\InvalidArgumentException
-//     */
-//    protected function getOnFailWithFallback(Request $request)
-//    {
-//        if ($request && $request->getConfig() && $request->getConfig()->getOnFail()) {
-//            return $request->getConfig()->getOnFail();
-//        }
-//
-//        return $this->getMasterConfig()['on_fail']; // fallback
-//    }
+        if ($request->getHeaders()) {
+            foreach ($request->getHeaders() as $header) {
+                $options[RequestOptions::HEADERS][$header->getName()][] = $header->getValue();
+            }
+        } else {
+            $options[RequestOptions::HEADERS] = [];
+        }
 
-//    /**
-//     * @param ChannelConfig|null $requestCfg
-//     * @param RequestConfig|null $globalConfig
-//     * @return array|null
-//     * @throws ChannelException
-//     * @throws \Psr\Cache\InvalidArgumentException
-//     */
-//    protected function mergeExpectedStatusCodes(?ChannelConfig $requestCfg, ?RequestConfig $globalConfig): ?array
-//    {
-//        $configMerge = $globalConfig ? $globalConfig->getConfigMerge() : $this->getMasterConfig()[self::OPT_CONFIG_MERGE];
-//        $generalCfg = $globalConfig ? $globalConfig->getChannel() : null;
-//        $channelConfig = $this->getChannelConfig();
-//        switch ($configMerge) {
-//            case RequestConfig::CFG_MERGE_IGNORE:
-//                return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
-//            case RequestConfig::CFG_MERGE_FIRST:
-//                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
-//                    return $requestCfg->getExpectedStatusCodes();
-//                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
-//                    return $generalCfg->getExpectedStatusCodes();
-//                } else {
-//                    return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
-//                }
-//                break;
-//            case RequestConfig::CFG_MERGE_UNIQUE:
-//                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
-//                    if ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
-//                        return array_merge(
-//                            $requestCfg->getExpectedStatusCodes(),
-//                            $generalCfg->getExpectedStatusCodes()
-//                        );
-//                    } else {
-//                        return $requestCfg->getExpectedStatusCodes();
-//                    }
-//                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
-//                    if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
-//                        return array_merge(
-//                            $requestCfg->getExpectedStatusCodes(),
-//                            $generalCfg->getExpectedStatusCodes()
-//                        );
-//                    } else {
-//                        return $generalCfg->getExpectedStatusCodes();
-//                    }
-//                } else {
-//                    return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
-//                }
-//
-//            default:
-//                // TODO: logic exception
-//                throw new ChannelException('Unexpected config merge strategy type: ' . $configMerge);
-//        }
-//    }
+        $this->appendInitialRequestHeaders($request, $options[RequestOptions::HEADERS]);
+
+        // TODO: check resource input format from configs
+        if ($request->getData()) {
+            if (is_array($request->getData()) || is_bool($request->getData())) {
+                $options[RequestOptions::JSON] = $request->getData(); // set JSON format
+            } else {
+                $options[RequestOptions::BODY] = $request->getData(); // set raw
+            }
+        }
+
+        return $options;
+    }
+
+    /**
+     * @param Request $request
+     * @return array
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws ChannelException
+     */
+    protected function getExpectedStatusCodesWithFallback(Request $request)
+    {
+        $globalConfig = $this->batchRequest->getConfig() ? $this->batchRequest->getConfig()->getChannel() : null;
+        $requestConfig = $request->getConfig() ? $request->getConfig()->getChannel() : null;
+        $statusCodes = $this->mergeExpectedStatusCodes($requestConfig, $globalConfig);
+
+        return $statusCodes ?: $this->getChannelConfig()[self::OPT_EXPECTED_STATUS_CODES] ?? []; // fallback
+    }
+
+    /**
+     * @param Request $request
+     * @return string|null
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function getOnFailWithFallback(Request $request)
+    {
+        if ($request && $request->getConfig() && $request->getConfig()->getOnFail()) {
+            return $request->getConfig()->getOnFail();
+        }
+
+        return $this->getMasterConfig()['on_fail']; // fallback
+    }
+
+    /**
+     * @param ChannelConfig|null $requestCfg
+     * @param RequestConfig|null $globalConfig
+     * @return array|null
+     * @throws ChannelException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function mergeExpectedStatusCodes(?ChannelConfig $requestCfg, ?RequestConfig $globalConfig): ?array
+    {
+        $configMerge = $globalConfig ? $globalConfig->getConfigMerge() : $this->getMasterConfig()[self::OPT_CONFIG_MERGE];
+        $generalCfg = $globalConfig ? $globalConfig->getChannel() : null;
+        $channelConfig = $this->getChannelConfig();
+        switch ($configMerge) {
+            case RequestConfig::CFG_MERGE_IGNORE:
+                return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
+            case RequestConfig::CFG_MERGE_FIRST:
+                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
+                    return $requestCfg->getExpectedStatusCodes();
+                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
+                    return $generalCfg->getExpectedStatusCodes();
+                } else {
+                    return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
+                }
+                break;
+            case RequestConfig::CFG_MERGE_UNIQUE:
+                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
+                    if ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
+                        return array_merge(
+                            $requestCfg->getExpectedStatusCodes(),
+                            $generalCfg->getExpectedStatusCodes()
+                        );
+                    } else {
+                        return $requestCfg->getExpectedStatusCodes();
+                    }
+                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
+                    if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
+                        return array_merge(
+                            $requestCfg->getExpectedStatusCodes(),
+                            $generalCfg->getExpectedStatusCodes()
+                        );
+                    } else {
+                        return $generalCfg->getExpectedStatusCodes();
+                    }
+                } else {
+                    return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
+                }
+
+            default:
+                // TODO: logic exception
+                throw new ChannelException('Unexpected config merge strategy type: ' . $configMerge);
+        }
+    }
 
 //    /**
 //     * @param array|null $queue
@@ -460,60 +464,60 @@ class HttpGraphChannel extends AbstractChannel
 //        };
 //    }
 
-//    /**
-//     * @param Request $request
-//     * @return \Closure
-//     */
-//    protected function getSendFulfilledCallback(Request $request): \Closure
-//    {
-//        return function (ResponseInterface $response) use ($request) {
-//            if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request)) &&
-//                in_array($this->getOnFailWithFallback($request), [
-//                    RequestConfig::CFG_ON_FAIL_ABORT,
-//                    RequestConfig::CFG_ON_FAIL_ABORT_QUEUE,
-//                ])
-//            ) {
-//                // todo: save failed objects and succeeded responses in separate data sets
-//                $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
-//                $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
-//
-//                throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
-//                    ->setRequest($request);
-//            }
-//
-//            $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));
-//        };
-//    }
+    /**
+     * @param Request $request
+     * @return \Closure
+     */
+    protected function getSendFulfilledCallback(Request $request): \Closure
+    {
+        return function (ResponseInterface $response) use ($request) {
+            if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request)) &&
+                in_array($this->getOnFailWithFallback($request), [
+                    RequestConfig::CFG_ON_FAIL_ABORT,
+                    RequestConfig::CFG_ON_FAIL_ABORT_QUEUE,
+                ])
+            ) {
+                // todo: save failed objects and succeeded responses in separate data sets
+                $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
+                $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
-//    /**
-//     * @param Request $request
-//     * @return \Closure
-//     */
-//    protected function getSendRejectedCallback(Request $request): \Closure
-//    {
-//        return function ($e) use ($request) {
-//            $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
-//            if ($e instanceof RequestException && $e->getResponse()) {
-//                $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $e->getResponse()));
-//            }
-//
-//            switch ($this->getOnFailWithFallback($request)) {
-//                case RequestConfig::CFG_ON_FAIL_ABORT:
-//                case RequestConfig::CFG_ON_FAIL_ABORT_QUEUE:
-//                    throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
-//                        ->setRequest($request);
-//                    break;
-//
-//                case RequestConfig::CFG_ON_FAIL_PROCEED:
-//                    // do nothing
-//                    break;
-//
-//                default:
-//                    throw new SendingException('Unexpected fail handler type: ' .
-//                        $this->getOnFailWithFallback($request));
-//            }
-//        };
-//    }
+                throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
+                    ->setRequest($request);
+            }
+
+            $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));
+        };
+    }
+
+    /**
+     * @param Request $request
+     * @return \Closure
+     */
+    protected function getSendRejectedCallback(Request $request): \Closure
+    {
+        return function ($e) use ($request) {
+            $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
+            if ($e instanceof RequestException && $e->getResponse()) {
+                $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $e->getResponse()));
+            }
+
+            switch ($this->getOnFailWithFallback($request)) {
+                case RequestConfig::CFG_ON_FAIL_ABORT:
+                case RequestConfig::CFG_ON_FAIL_ABORT_QUEUE:
+                    throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
+                        ->setRequest($request);
+                    break;
+
+                case RequestConfig::CFG_ON_FAIL_PROCEED:
+                    // do nothing
+                    break;
+
+                default:
+                    throw new SendingException('Unexpected fail handler type: ' .
+                        $this->getOnFailWithFallback($request));
+            }
+        };
+    }
 
     /**
      * @inheritdoc
@@ -555,125 +559,125 @@ class HttpGraphChannel extends AbstractChannel
         return $response;
     }
 
-//    /**
-//     * @param Request $request
-//     * @param array|null $headers
-//     * @return array|void
-//     * @throws \Psr\Cache\InvalidArgumentException
-//     */
-//    protected function appendInitialRequestHeaders(Request $request, ?array &$headers)
-//    {
-//        if (!$this->requestStack) {
-//            return;
-//        }
-//
-//        $initialRequest = $this->requestStack->getCurrentRequest();
-//        if (!$initialRequest) {
-//            return;
-//        }
-//
-//        $allowedHeaders = $this->getChannelConfig()[self::OPT_SENDER_HEADERS] ?? [];
-//        if (!$allowedHeaders) { // if empty consider that all needed
-//            foreach ($request->getHeaders() as $header) {
-//                $headers[$header->getName()][] = $header->getValue();
-//            }
-//
-//            return;
-//        }
-//
-//        foreach ($allowedHeaders as $allowedHeader) {
-//            if ($initialRequest->headers->has($allowedHeader)) {
-//                $headers[$allowedHeader] = $initialRequest->headers->get($allowedHeader);
-//            }
-//        }
-//    }
+    /**
+     * @param Request $request
+     * @param array|null $headers
+     * @return array|void
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function appendInitialRequestHeaders(Request $request, ?array &$headers)
+    {
+        if (!$this->requestStack) {
+            return;
+        }
 
-//    /**
-//     * @param Request $request
-//     * @param Response|ResponseInterface $srcResponse
-//     * @return HttpResponse
-//     * @throws ChannelException
-//     * @throws \Psr\Cache\InvalidArgumentException
-//     */
-//    protected function buildResponseData(Request $request, $srcResponse): HttpResponse
-//    {
-//        // TODO: dispatcher extend with config request resulting object
-//        // TODO: add headers from config
-//
-//        $requestConfig = $request->getConfig();
-//
-//        $targetResponse = new HttpResponse();
-//        $targetResponse->setId($request->getId());
-//        $targetResponse->setStatusCode($srcResponse->getStatusCode());
-//        $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
-//
-//        // TODO: check config merge strategy
-//        if ($requestConfig && $requestConfig->getFormat()) {
-//            $format = $requestConfig->getFormat();
-//        } else {
-//            $format = $this->getMasterConfig()[self::OPT_RESOURCE_FORMAT];
-//        }
-//
-//        $this->genResponseBody($format, $srcResponse, $targetResponse);
-//
-//        if ($this->dispatcher) {
-//            $event = new BuildResponseEvent($targetResponse, $srcResponse, $requestConfig);
-//            $this->dispatcher->dispatch(BuildResponseEvent::EVENT_POST_BUILD, $event);
-//            $targetResponse = $event->getTargetResponse();
-//        }
-//
-//        return $targetResponse;
-//    }
-//
-//    /**
-//     * @param ResponseInterface $srcResponse
-//     * @return array
-//     */
-//    protected function buildResponseHeaders(ResponseInterface $srcResponse): array
-//    {
-//        $headers = [];
-//        foreach ($srcResponse->getHeaders() as $name => $values) {
-//            foreach ($values as $value) {
-//                $headers[] = new HttpHeader($name, $value);
-//            }
-//        }
-//
-//        return $headers;
-//    }
-//
-//    /**
-//     * @param string $format
-//     * @param ResponseInterface $srcResponse
-//     * @param HttpResponse $targetResponse
-//     * @throws ChannelException
-//     */
-//    protected function genResponseBody($format, ResponseInterface $srcResponse, HttpResponse $targetResponse): void
-//    {
-//        switch ($format) {
-//            case HttpResponse::FORMAT_JSON:
-//                // TODO: if exception thrown then somehow mark response as failed and write some error info
-//                $data = $srcResponse->getBody()->getContents();
-//                if ($data === '' || $data === null) {
-//                    $targetResponse->setData(null);
-//                } else {
-//                    try {
-//                        $targetResponse->setData((new JsonDecode())
-//                            ->decode($data, 'json', ['json_decode_associative' => true]));
-//                    } catch (NotEncodableValueException $e) {
-//                        // TODO: add event dispatcher, if defined
-//                        $targetResponse->setData($data); // set raw data
-//                    }
-//                }
-//                break;
-//            case HttpResponse::FORMAT_TEXT:
-//                $targetResponse->setData($srcResponse->getBody()->getContents());
-//                break;
-//            case HttpResponse::FORMAT_BINARY:
-//                // TODO: implement me! Download files to tmp dir and return links to those files
-//                // TODO: implement FileStorageInterface to abstract place for storing files
-//            default:
-//                throw new ChannelException('Not supported format: ' . $format);
-//        }
-//    }
+        $initialRequest = $this->requestStack->getCurrentRequest();
+        if (!$initialRequest) {
+            return;
+        }
+
+        $allowedHeaders = $this->getChannelConfig()[self::OPT_SENDER_HEADERS] ?? [];
+        if (!$allowedHeaders) { // if empty consider that all needed
+            foreach ($request->getHeaders() as $header) {
+                $headers[$header->getName()][] = $header->getValue();
+            }
+
+            return;
+        }
+
+        foreach ($allowedHeaders as $allowedHeader) {
+            if ($initialRequest->headers->has($allowedHeader)) {
+                $headers[$allowedHeader] = $initialRequest->headers->get($allowedHeader);
+            }
+        }
+    }
+
+    /**
+     * @param Request $request
+     * @param Response|ResponseInterface $srcResponse
+     * @return HttpResponse
+     * @throws ChannelException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function buildResponseData(Request $request, $srcResponse): HttpResponse
+    {
+        // TODO: dispatcher extend with config request resulting object
+        // TODO: add headers from config
+
+        $requestConfig = $request->getConfig();
+
+        $targetResponse = new HttpResponse();
+        $targetResponse->setId($request->getId());
+        $targetResponse->setStatusCode($srcResponse->getStatusCode());
+        $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
+
+        // TODO: check config merge strategy
+        if ($requestConfig && $requestConfig->getFormat()) {
+            $format = $requestConfig->getFormat();
+        } else {
+            $format = $this->getMasterConfig()[self::OPT_RESOURCE_FORMAT];
+        }
+
+        $this->genResponseBody($format, $srcResponse, $targetResponse);
+
+        if ($this->dispatcher) {
+            $event = new BuildResponseEvent($targetResponse, $srcResponse, $requestConfig);
+            $this->dispatcher->dispatch(BuildResponseEvent::EVENT_POST_BUILD, $event);
+            $targetResponse = $event->getTargetResponse();
+        }
+
+        return $targetResponse;
+    }
+
+    /**
+     * @param ResponseInterface $srcResponse
+     * @return array
+     */
+    protected function buildResponseHeaders(ResponseInterface $srcResponse): array
+    {
+        $headers = [];
+        foreach ($srcResponse->getHeaders() as $name => $values) {
+            foreach ($values as $value) {
+                $headers[] = new HttpHeader($name, $value);
+            }
+        }
+
+        return $headers;
+    }
+
+    /**
+     * @param string $format
+     * @param ResponseInterface $srcResponse
+     * @param HttpResponse $targetResponse
+     * @throws ChannelException
+     */
+    protected function genResponseBody($format, ResponseInterface $srcResponse, HttpResponse $targetResponse): void
+    {
+        switch ($format) {
+            case HttpResponse::FORMAT_JSON:
+                // TODO: if exception thrown then somehow mark response as failed and write some error info
+                $data = $srcResponse->getBody()->getContents();
+                if ($data === '' || $data === null) {
+                    $targetResponse->setData(null);
+                } else {
+                    try {
+                        $targetResponse->setData((new JsonDecode())
+                            ->decode($data, 'json', ['json_decode_associative' => true]));
+                    } catch (NotEncodableValueException $e) {
+                        // TODO: add event dispatcher, if defined
+                        $targetResponse->setData($data); // set raw data
+                    }
+                }
+                break;
+            case HttpResponse::FORMAT_TEXT:
+                $targetResponse->setData($srcResponse->getBody()->getContents());
+                break;
+            case HttpResponse::FORMAT_BINARY:
+                // TODO: implement me! Download files to tmp dir and return links to those files
+                // TODO: implement FileStorageInterface to abstract place for storing files
+            default:
+                throw new ChannelException('Not supported format: ' . $format);
+        }
+    }
 
 }
