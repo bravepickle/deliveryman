@@ -6,17 +6,18 @@ use Deliveryman\Channel\HttpGraph\GraphNode;
 use Deliveryman\Channel\HttpGraph\GraphNodeCollection;
 use Deliveryman\Channel\HttpGraph\GraphTreeBuilder;
 use Deliveryman\Entity\BatchRequest;
+use Deliveryman\Entity\HttpGraph\ChannelConfig;
 use Deliveryman\Entity\HttpGraph\HttpRequest;
-use Deliveryman\Entity\HttpQueue\ChannelConfig;
 use Deliveryman\Entity\RequestConfig;
 use Deliveryman\Entity\HttpHeader;
 use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Entity\ResponseItemInterface;
 use Deliveryman\EventListener\BuildResponseEvent;
 use Deliveryman\Exception\ChannelException;
-use Deliveryman\Exception\LogicException;
+use Deliveryman\Exception\InvalidArgumentException;
 use Deliveryman\Exception\SendingException;
 use Deliveryman\Service\ConfigManager;
+use Deliveryman\Strategy\MergeRequestConfigStrategy;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Psr7\Response;
@@ -88,10 +89,17 @@ class HttpGraphChannel extends AbstractChannel
     protected $nodesCollection;
 
     /**
+     * @var MergeRequestConfigStrategy
+     */
+    protected $mergeStrategy;
+
+    /**
      * Sender constructor.
      * @param ConfigManager $configManager
      * @param RequestStack|null $requestStack
      * @param EventDispatcherInterface|null $dispatcher
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     public function __construct(
         ConfigManager $configManager,
@@ -103,6 +111,8 @@ class HttpGraphChannel extends AbstractChannel
         $this->requestStack = $requestStack;
         $this->dispatcher = $dispatcher;
         $this->treeBuilder = new GraphTreeBuilder();
+
+        $this->initMergeStrategy();
     }
 
     /**
@@ -146,6 +156,7 @@ class HttpGraphChannel extends AbstractChannel
      * @inheritdoc
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Deliveryman\Exception\LogicException
+     * @throws \Deliveryman\Exception\InvalidArgumentException
      */
     public function send(BatchRequest $batchRequest)
     {
@@ -155,6 +166,8 @@ class HttpGraphChannel extends AbstractChannel
         if (!$this->batchRequest->getData()) {
             throw new ChannelException(self::MSG_UNDEFINED_REQUESTS);
         }
+
+        $this->mergeRequestConfigs();
 
         if ($this->hasSingleRequest()) {
             $requests = $this->batchRequest->getData();
@@ -178,9 +191,41 @@ class HttpGraphChannel extends AbstractChannel
     }
 
     /**
+     * Merge request configs together according to settings and update them
+     * @throws \Deliveryman\Exception\InvalidArgumentException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function mergeRequestConfigs()
+    {
+        $generalCfg = $this->batchRequest->getConfig();
+        /** @var HttpRequest $request */
+        foreach ($this->batchRequest->getData() as $request) {
+            $this->mergeStrategy->setConfigMerge(
+                $this->getConfigMergeWithFallback($request->getConfig(), $generalCfg)
+            );
+
+            $configs = [];
+            if ($generalCfg) {
+                $configs[] = $generalCfg->toArray();
+            }
+
+            if ($request->getConfig()) {
+                $configs[] = $request->getConfig()->toArray();
+            }
+
+            $mergedConfig = new RequestConfig();
+            $mergedConfig->load(
+                $this->mergeStrategy->merge(...$configs),
+                ['channel_class' => ChannelConfig::class]
+            );
+
+            $request->setConfig($mergedConfig);
+        }
+    }
+
+    /**
      * Send multiple queues concurrently
      * @throws \Psr\Cache\InvalidArgumentException
-     * @throws LogicException
      */
     protected function sendMultiArrows()
     {
@@ -203,7 +248,6 @@ class HttpGraphChannel extends AbstractChannel
      * @param Client $client
      * @return Promise\PromiseInterface|null
      * @throws \Psr\Cache\InvalidArgumentException
-     * @throws LogicException
      */
     protected function chainSendRequest(GraphNode $node, Client $client)
     {
@@ -307,89 +351,6 @@ class HttpGraphChannel extends AbstractChannel
         return $options;
     }
 
-    /**
-     * @param HttpRequest $request
-     * @return array
-     * @throws \Psr\Cache\InvalidArgumentException
-     * @throws ChannelException
-     */
-    protected function getExpectedStatusCodesWithFallback(HttpRequest $request)
-    {
-        $globalConfig = $this->batchRequest->getConfig() ? $this->batchRequest->getConfig() : null;
-        $requestConfig = $request->getConfig() ? $request->getConfig() : null;
-        $statusCodes = $this->mergeExpectedStatusCodes($requestConfig, $globalConfig);
-
-        return $statusCodes ?: $this->getChannelConfig()[self::OPT_EXPECTED_STATUS_CODES] ?? []; // fallback
-    }
-
-    /**
-     * @param HttpRequest $request
-     * @return string|null
-     * @throws \Psr\Cache\InvalidArgumentException
-     */
-    protected function getOnFailWithFallback(HttpRequest $request)
-    {
-        if ($request && $request->getConfig() && $request->getConfig()->getOnFail()) {
-            return $request->getConfig()->getOnFail();
-        }
-
-        return $this->getMasterConfig()['on_fail']; // fallback
-    }
-
-    /**
-     * @param RequestConfig|null $requestCfg
-     * @param RequestConfig|null $globalConfig
-     * @return array|null
-     * @throws ChannelException
-     * @throws \Psr\Cache\InvalidArgumentException
-     */
-    protected function mergeExpectedStatusCodes(?RequestConfig $requestCfg, ?RequestConfig $globalConfig): ?array
-    {
-        // TODO: move merging configs to separate classes as each merge type as separate strategy class
-        $reqChannelCfg = $requestCfg ? $requestCfg->getChannel() : null;
-        $configMerge = $this->getConfigMergeWithFallback($requestCfg, $globalConfig);
-        $generalCfg = $globalConfig ? $globalConfig->getChannel() : null;
-        $channelConfig = $this->getChannelConfig();
-        switch ($configMerge) {
-            case RequestConfig::CFG_MERGE_IGNORE:
-                return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
-            case RequestConfig::CFG_MERGE_FIRST:
-                if ($reqChannelCfg && $reqChannelCfg->getExpectedStatusCodes()) {
-                    return $reqChannelCfg->getExpectedStatusCodes();
-                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
-                    return $generalCfg->getExpectedStatusCodes();
-                } else {
-                    return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
-                }
-                break;
-            case RequestConfig::CFG_MERGE_UNIQUE:
-                if ($requestCfg && $reqChannelCfg->getExpectedStatusCodes()) {
-                    if ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
-                        return array_merge(
-                            $reqChannelCfg->getExpectedStatusCodes(),
-                            $generalCfg->getExpectedStatusCodes()
-                        );
-                    } else {
-                        return $reqChannelCfg->getExpectedStatusCodes();
-                    }
-                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
-                    if ($requestCfg && $reqChannelCfg->getExpectedStatusCodes()) {
-                        return array_merge(
-                            $reqChannelCfg->getExpectedStatusCodes(),
-                            $generalCfg->getExpectedStatusCodes()
-                        );
-                    } else {
-                        return $generalCfg->getExpectedStatusCodes();
-                    }
-                } else {
-                    return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
-                }
-
-            default:
-                // TODO: logic exception
-                throw new ChannelException('Unexpected config merge strategy type: ' . $configMerge);
-        }
-    }
 
     /**
      * @param GraphNode $node
@@ -401,11 +362,11 @@ class HttpGraphChannel extends AbstractChannel
     {
         return function (ResponseInterface $response) use ($client, $node, $request) {
             $this->setNodeState($node, self::NODE_STATE_SEND_FINISHED);
-            if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request))) {
+            if (!in_array($response->getStatusCode(), (array)$request->getConfig()->getChannel()->getExpectedStatusCodes())) {
                 $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
-                $onFail = $this->getOnFailWithFallback($request);
+                $onFail = $request->getConfig()->getOnFail();
                 switch ($onFail) {
                     case RequestConfig::CFG_ON_FAIL_PROCEED:
                         // do nothing
@@ -432,7 +393,6 @@ class HttpGraphChannel extends AbstractChannel
     /**
      * @param GraphNode $node
      * @param Client $client
-     * @throws LogicException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function chainSendNodesSuccessors(GraphNode $node, Client $client)
@@ -488,7 +448,7 @@ class HttpGraphChannel extends AbstractChannel
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $e->getResponse()));
             }
 
-            $onFail = $this->getOnFailWithFallback($request);
+            $onFail = $request->getConfig()->getOnFail();
             switch ($onFail) {
                 case RequestConfig::CFG_ON_FAIL_PROCEED:
                     $promise = $this->chainSendRequest($node, $client);
@@ -517,11 +477,11 @@ class HttpGraphChannel extends AbstractChannel
     protected function getSendFulfilledCallback(HttpRequest $request): \Closure
     {
         return function (ResponseInterface $response) use ($request) {
-            if (!in_array($response->getStatusCode(), $this->getExpectedStatusCodesWithFallback($request))) {
+            if (!in_array($response->getStatusCode(), (array)$request->getConfig()->getChannel()->getExpectedStatusCodes())) {
                 $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
-                if (in_array($this->getOnFailWithFallback($request), [
+                if (in_array($request->getConfig()->getOnFail(), [
                     RequestConfig::CFG_ON_FAIL_ABORT,
                 ])) {
                     throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
@@ -547,7 +507,7 @@ class HttpGraphChannel extends AbstractChannel
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $e->getResponse()));
             }
 
-            switch ($this->getOnFailWithFallback($request)) {
+            switch ($request->getConfig()->getOnFail()) {
                 case RequestConfig::CFG_ON_FAIL_ABORT:
                 case RequestConfig::CFG_ON_FAIL_ABORT_QUEUE:
                     throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
@@ -560,7 +520,7 @@ class HttpGraphChannel extends AbstractChannel
 
                 default:
                     throw new SendingException('Unexpected fail handler type: ' .
-                        $this->getOnFailWithFallback($request));
+                        $request->getConfig()->getOnFail());
             }
         };
     }
@@ -727,7 +687,6 @@ class HttpGraphChannel extends AbstractChannel
     }
 
     /**
-     * @throws LogicException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function sendSingleArrow(): void
@@ -758,6 +717,31 @@ class HttpGraphChannel extends AbstractChannel
         }
 
         return $this->getMasterConfig()[self::OPT_CONFIG_MERGE];
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function initMergeStrategy(): void
+    {
+        $masterConfig = $this->getMasterConfig();
+        $defaults = [
+            'silent' => $masterConfig['silent'],
+            'format' => $masterConfig['resource_format'],
+            'configMerge' => $masterConfig['config_merge'],
+            'onFail' => $masterConfig['on_fail'],
+        ];
+
+        if (!isset($masterConfig['channels'][$this->getName()])) {
+            throw new InvalidArgumentException('Channel configuration was not defined.');
+        }
+
+        $defaults['channel'] = [
+            'expectedStatusCodes' => $masterConfig['channels'][$this->getName()]['expected_status_codes']
+        ];
+
+        $this->mergeStrategy = new MergeRequestConfigStrategy($defaults);
     }
 
 }

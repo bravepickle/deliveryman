@@ -4,7 +4,7 @@
  * Time: 00:15
  */
 
-namespace DeliverymanTest\Config;
+namespace DeliverymanTest\DependencyInjection;
 
 
 use Deliveryman\DependencyInjection\Configuration;

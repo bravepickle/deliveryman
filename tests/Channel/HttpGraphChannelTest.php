@@ -45,6 +45,7 @@ class HttpGraphChannelTest extends TestCase
      * @throws \Deliveryman\Exception\ChannelException
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Deliveryman\Exception\LogicException
+     * @throws \Deliveryman\Exception\InvalidArgumentException
      */
     public function testSend(array $appConfig, BatchRequest $input, array $responses, array $expectedRequests, array $expected)
     {
@@ -240,6 +241,7 @@ class HttpGraphChannelTest extends TestCase
      * @throws ChannelException
      * @throws \Deliveryman\Exception\LogicException
      * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Deliveryman\Exception\InvalidArgumentException
      */
     public function testSendNoRequests()
     {
@@ -248,6 +250,7 @@ class HttpGraphChannelTest extends TestCase
 
         $batch = new BatchRequest();
         $configManager = new ConfigManager();
+        $configManager->addConfiguration(['domains' => ['localhost']]);
 
         $channel = new HttpGraphChannel($configManager);
         $channel->send($batch);

@@ -14,11 +14,17 @@ class MergeIgnoreConfigStrategy extends AbstractMergeConfigStrategy
 {
     const NAME = 'ignore';
 
-    public function merge(...$configs)
+    /**
+     * @inheritdoc
+     */
+    public function merge(...$configs): array
     {
-        return $this->fallbackConfig; // use always defaults
+        return $this->defaults; // use always defaults
     }
 
+    /**
+     * @inheritdoc
+     */
     public function getName(): string
     {
         return self::NAME;

@@ -14,10 +14,13 @@ class MergeFirstConfigStrategy extends AbstractMergeConfigStrategy
 {
     const NAME = 'first';
 
-    public function merge(...$configs)
+    /**
+     * @inheritdoc
+     */
+    public function merge(...$configs): array
     {
-        $configs = array_reverse($configs);
-        $configs[] = $this->fallbackConfig; // add defaults
+        $configs = array_reverse(array_filter($configs));
+        $configs[] = $this->defaults; // add defaults
 
         $config = [];
         foreach ($configs as $cfg) {
@@ -31,6 +34,9 @@ class MergeFirstConfigStrategy extends AbstractMergeConfigStrategy
         return $config;
     }
 
+    /**
+     * @inheritdoc
+     */
     public function getName(): string
     {
         return self::NAME;

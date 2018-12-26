@@ -4,13 +4,13 @@
  * Time: 23:28
  */
 
-namespace Deliveryman\Entity\HttpQueue;
+namespace Deliveryman\Entity\HttpGraph;
 
 use Deliveryman\Entity\ArrayConvertableInterface;
 
 /**
  * Class ChannelConfig
- * @package Deliveryman\Entity\HttpQueue
+ * @package Deliveryman\Entity\HttpGraph
  */
 class ChannelConfig implements ArrayConvertableInterface
 {
@@ -49,4 +49,5 @@ class ChannelConfig implements ArrayConvertableInterface
     {
         $this->setExpectedStatusCodes($data['expectedStatusCodes'] ?? null);
     }
+
 }

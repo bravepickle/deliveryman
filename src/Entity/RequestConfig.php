@@ -4,9 +4,10 @@ namespace Deliveryman\Entity;
 
 
 use Deliveryman\Entity\HttpQueue\ChannelConfig;
+use Deliveryman\Exception\InvalidArgumentException;
 use Deliveryman\Normalizer\NormalizableInterface;
 
-class RequestConfig implements NormalizableInterface
+class RequestConfig implements NormalizableInterface, ArrayConvertableInterface
 {
     const CFG_MERGE_FIRST = 'first';
     const CFG_MERGE_UNIQUE = 'unique';
@@ -39,7 +40,7 @@ class RequestConfig implements NormalizableInterface
     protected $format;
 
     /**
-     * @var mixed channel-related configuration
+     * @var ArrayConvertableInterface|null channel-related configuration
      */
     protected $channel;
 
@@ -120,7 +121,7 @@ class RequestConfig implements NormalizableInterface
     }
 
     /**
-     * @return mixed|ChannelConfig
+     * @return null|ChannelConfig|ArrayConvertableInterface
      */
     public function getChannel()
     {
@@ -131,11 +132,50 @@ class RequestConfig implements NormalizableInterface
      * @param mixed $channel
      * @return RequestConfig
      */
-    public function setChannel($channel)
+    public function setChannel(?ArrayConvertableInterface $channel)
     {
         $this->channel = $channel;
 
         return $this;
     }
+
+    /**
+     * @inheritdoc
+     */
+    public function toArray(): array
+    {
+        return [
+            'configMerge' => $this->configMerge,
+            'onFail' => $this->onFail,
+            'silent' => $this->silent,
+            'format' => $this->format,
+            'channel' => $this->channel === null ? null : $this->channel->toArray(),
+        ];
+    }
+
+    /**
+     * @inheritdoc
+     * @throws InvalidArgumentException
+     */
+    public function load(array $data, $context = []): void
+    {
+        $this->setConfigMerge($data['configMerge'] ?? null);
+        $this->setOnFail($data['onFail'] ?? null);
+        $this->setSilent($data['silent'] ?? null);
+        $this->setFormat($data['format'] ?? null);
+
+        if (!isset($context['channel_class'])) {
+            throw new InvalidArgumentException('Channel class for config was not set.');
+        }
+
+        $channel = new $context['channel_class']();
+        if (isset($data['channel'])) {
+            /** @var ArrayConvertableInterface $channel */
+            $channel->load($data['channel'], $context);
+        }
+
+        $this->setChannel($channel);
+    }
+
 
 }

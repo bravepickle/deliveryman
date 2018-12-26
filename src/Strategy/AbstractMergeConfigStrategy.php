@@ -16,7 +16,7 @@ abstract class AbstractMergeConfigStrategy
     /**
      * @var array
      */
-    protected $fallbackConfig = [];
+    protected $defaults = [];
 
     /**
      * AbstractMergeStrategy constructor.
@@ -24,14 +24,30 @@ abstract class AbstractMergeConfigStrategy
      */
     public function __construct($fallbackConfig = [])
     {
-        $this->fallbackConfig = $fallbackConfig;
+        $this->defaults = $fallbackConfig;
+    }
+
+    /**
+     * @return array
+     */
+    public function getDefaults(): array
+    {
+        return $this->defaults;
+    }
+
+    /**
+     * @param array $defaults
+     */
+    public function setDefaults(array $defaults): void
+    {
+        $this->defaults = $defaults;
     }
 
     /**
      * @param mixed ...$configs
      * @return mixed
      */
-    abstract public function merge(...$configs);
+    abstract public function merge(...$configs): array;
 
     /**
      * Name of strategy

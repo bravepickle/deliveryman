@@ -19,6 +19,7 @@ interface ArrayConvertableInterface
     /**
      * Load object data from array and set values
      * @param array $data
+     * @param array $context
      */
-    public function load(array $data): void;
+    public function load(array $data, $context = []): void;
 }
