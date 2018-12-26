@@ -13,6 +13,8 @@ use Deliveryman\Entity\HttpHeader;
 use Deliveryman\Entity\HttpQueue\ChannelConfig;
 use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Entity\RequestConfig;
+use Deliveryman\EventListener\BuildResponseEvent;
+use Deliveryman\Exception\BaseException;
 use Deliveryman\Exception\ChannelException;
 use Deliveryman\Service\ConfigManager;
 use GuzzleHttp\Exception\RequestException;
@@ -22,6 +24,7 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Yaml\Yaml;
 
@@ -222,7 +225,7 @@ class HttpGraphChannelTest extends TestCase
 
         $this->assertEquals([], $channel->getOkResponses(), 'Success responses differ');
         $this->assertEquals(['home', 'logout', 'feedback', 'login', 'profile',], array_keys($channel->getFailedResponses()), 'Failed responses differ');
-        $this->assertEquals(['home', 'logout',  'feedback', 'login', 'profile',], array_keys($channel->getErrors()), 'Error responses differ');
+        $this->assertEquals(['home', 'logout', 'feedback', 'login', 'profile',], array_keys($channel->getErrors()), 'Error responses differ');
     }
 
 
@@ -356,6 +359,112 @@ class HttpGraphChannelTest extends TestCase
     }
 
     /**
+     * @throws ChannelException
+     * @throws \Deliveryman\Exception\InvalidArgumentException
+     * @throws \Deliveryman\Exception\LogicException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function testSendFailUnknownDataFormat()
+    {
+        $this->expectExceptionMessage('Not supported data format: binary');
+        $handler = new MockHandler([
+            new Response(400),
+        ]);
+        $input = (new BatchRequest())
+            ->setData([
+                (new HttpRequest())->setId('home')->setUri('localhost/')
+                    ->setConfig((new RequestConfig())->setFormat('binary')),
+            ]);
+        $appConfig = [
+            'domains' => ['localhost'],
+        ];
+
+        $handler = HandlerStack::create($handler);
+
+        $appConfig['channels']['http_graph']['request_options']['handler'] = $handler;
+
+        $configManager = new ConfigManager();
+        $configManager->addConfiguration($appConfig);
+
+        $channel = new HttpGraphChannel($configManager);
+        $channel->send($input);
+    }
+
+    /**
+     * @throws ChannelException
+     * @throws \Deliveryman\Exception\InvalidArgumentException
+     * @throws \Deliveryman\Exception\LogicException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function testSendFailUnknownOnFail()
+    {
+        $this->expectExceptionMessage('Unexpected fail handler type: crash');
+        $handler = new MockHandler([
+            new BaseException('Good bad news'),
+            new Response(400),
+        ]);
+        $input = (new BatchRequest())
+            ->setData([
+                (new HttpRequest())->setId('home')->setUri('localhost/')
+                    ->setConfig((new RequestConfig())->setOnFail('crash')),
+                (new HttpRequest())->setId('foo')->setUri('localhost/foo')->setReq(['home']),
+            ]);
+        $appConfig = [
+            'domains' => ['localhost'],
+        ];
+
+        $handler = HandlerStack::create($handler);
+
+        $appConfig['channels']['http_graph']['request_options']['handler'] = $handler;
+
+        $configManager = new ConfigManager();
+        $configManager->addConfiguration($appConfig);
+
+        $channel = new HttpGraphChannel($configManager);
+        $channel->send($input);
+
+//        print_r($channel->getFailedResponses());
+//        print_r($channel->getErrors());
+    }
+
+    /**
+     * @throws ChannelException
+     * @throws \Deliveryman\Exception\InvalidArgumentException
+     * @throws \Deliveryman\Exception\LogicException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function testSendWithEventDispatcher()
+    {
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener('deliveryman.response.post_build', function ($event, $action) {
+            $this->assertInstanceOf(BuildResponseEvent::class, $event);
+            $this->assertEquals('deliveryman.response.post_build', $action);
+        });
+
+        $handler = new MockHandler([
+            new Response(200),
+        ]);
+
+        $input = (new BatchRequest())
+            ->setData([
+                (new HttpRequest())->setId('home')->setUri('localhost/'),
+            ]);
+        $appConfig = [
+            'domains' => ['localhost'],
+        ];
+
+        $handler = HandlerStack::create($handler);
+
+        $appConfig['channels']['http_graph']['request_options']['handler'] = $handler;
+
+        $configManager = new ConfigManager();
+        $configManager->addConfiguration($appConfig);
+
+        $channel = new HttpGraphChannel($configManager, null, $dispatcher);
+        $channel->send($input);
+    }
+
+    /**
      * @dataProvider clientRequestProvider
      * @param array $appConfig
      * @param \Symfony\Component\HttpFoundation\Request $clientRequest
@@ -370,7 +479,7 @@ class HttpGraphChannelTest extends TestCase
      */
     public function testSendClientRequest(
         array $appConfig,
-        \Symfony\Component\HttpFoundation\Request $clientRequest,
+        ?\Symfony\Component\HttpFoundation\Request $clientRequest,
         BatchRequest $input,
         array $responses,
         array $expectedRequests,
@@ -379,7 +488,7 @@ class HttpGraphChannelTest extends TestCase
     {
         $mockHandler = new MockHandler($responses);
 
-        $handler = HandlerStack::create(function(RequestInterface $request, $options) use ($mockHandler, $expectedRequests) {
+        $handler = HandlerStack::create(function (RequestInterface $request, $options) use ($mockHandler, $expectedRequests) {
             $expected = array_shift($expectedRequests);
 
             $this->assertEquals($expected->getMethod(), $request->getMethod(), 'Sent request method differs from expected.');
@@ -396,7 +505,9 @@ class HttpGraphChannelTest extends TestCase
         $configManager->addConfiguration($appConfig);
 
         $requestStack = new RequestStack();
-        $requestStack->push($clientRequest);
+        if ($clientRequest) {
+            $requestStack->push($clientRequest);
+        }
         $channel = new HttpGraphChannel($configManager, $requestStack);
         $channel->send($input);
 

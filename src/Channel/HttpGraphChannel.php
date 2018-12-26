@@ -14,7 +14,7 @@ use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Entity\ResponseItemInterface;
 use Deliveryman\EventListener\BuildResponseEvent;
 use Deliveryman\Exception\ChannelException;
-use Deliveryman\Exception\InvalidArgumentException;
+use Deliveryman\Exception\LogicException;
 use Deliveryman\Exception\SendingException;
 use Deliveryman\Service\ConfigManager;
 use Deliveryman\Strategy\MergeRequestConfigStrategy;
@@ -99,7 +99,6 @@ class HttpGraphChannel extends AbstractChannel
      * @param RequestStack|null $requestStack
      * @param EventDispatcherInterface|null $dispatcher
      * @throws \Psr\Cache\InvalidArgumentException
-     * @throws InvalidArgumentException
      */
     public function __construct(
         ConfigManager $configManager,
@@ -443,6 +442,8 @@ class HttpGraphChannel extends AbstractChannel
         return function ($e) use ($client, $node, $request) {
             $this->setNodeState($node, self::NODE_STATE_SEND_FINISHED);
             // TODO: dispatch event on fail
+            // TODO: validate all config values and fields before trying to send any data
+            // TODO: somehow unify errors output for cases when multiple parallel requests done against single one. Now exceptions are caught
             $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
             if ($e instanceof RequestException && $e->getResponse()) {
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $e->getResponse()));
@@ -600,8 +601,7 @@ class HttpGraphChannel extends AbstractChannel
      * @param HttpRequest $request
      * @param Response|ResponseInterface $srcResponse
      * @return HttpResponse
-     * @throws ChannelException
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws LogicException
      */
     protected function buildResponseData(HttpRequest $request, $srcResponse): HttpResponse
     {
@@ -644,10 +644,11 @@ class HttpGraphChannel extends AbstractChannel
      * @param string $format
      * @param ResponseInterface $srcResponse
      * @param HttpResponse $targetResponse
-     * @throws ChannelException
+     * @throws LogicException
      */
     protected function genResponseBody($format, ResponseInterface $srcResponse, HttpResponse $targetResponse): void
     {
+        // TODO: add validation of data format before processing requests and sending them
         switch ($format) {
             case HttpResponse::FORMAT_JSON:
                 // TODO: if exception thrown then somehow mark response as failed and write some error info
@@ -671,7 +672,7 @@ class HttpGraphChannel extends AbstractChannel
                 // TODO: implement me! Download files to tmp dir and return links to those files
                 // TODO: implement FileStorageInterface to abstract place for storing files
             default:
-                throw new ChannelException('Not supported format: ' . $format);
+                throw new LogicException('Not supported data format: ' . $format);
         }
     }
 
@@ -709,7 +710,6 @@ class HttpGraphChannel extends AbstractChannel
     }
 
     /**
-     * @throws InvalidArgumentException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function initMergeStrategy(): void
@@ -721,10 +721,6 @@ class HttpGraphChannel extends AbstractChannel
             'configMerge' => $masterConfig['config_merge'],
             'onFail' => $masterConfig['on_fail'],
         ];
-
-        if (!isset($masterConfig['channels'][$this->getName()])) {
-            throw new InvalidArgumentException('Channel configuration was not defined.');
-        }
 
         $defaults['channel'] = [
             'expectedStatusCodes' => $masterConfig['channels'][$this->getName()]['expected_status_codes']
