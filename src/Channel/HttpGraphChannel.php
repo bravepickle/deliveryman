@@ -337,7 +337,7 @@ class HttpGraphChannel extends AbstractChannel
             $options[RequestOptions::HEADERS] = [];
         }
 
-        $this->appendInitialRequestHeaders($request, $options[RequestOptions::HEADERS]);
+        $this->appendInitialRequestHeaders($options[RequestOptions::HEADERS]);
 
         // TODO: check resource input format from configs
         if ($request->getData()) {
@@ -451,10 +451,7 @@ class HttpGraphChannel extends AbstractChannel
             $onFail = $request->getConfig()->getOnFail();
             switch ($onFail) {
                 case RequestConfig::CFG_ON_FAIL_PROCEED:
-                    $promise = $this->chainSendRequest($node, $client);
-                    if ($promise) {
-                        $promise->wait();
-                    }
+                    $this->chainSendNodesSuccessors($node, $client);
                     break;
 
                 case RequestConfig::CFG_ON_FAIL_ABORT:
@@ -566,12 +563,11 @@ class HttpGraphChannel extends AbstractChannel
     }
 
     /**
-     * @param HttpRequest $request
      * @param array|null $headers
      * @return array|void
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function appendInitialRequestHeaders(HttpRequest $request, ?array &$headers)
+    protected function appendInitialRequestHeaders(?array &$headers)
     {
         if (!$this->requestStack) {
             return;
@@ -584,8 +580,10 @@ class HttpGraphChannel extends AbstractChannel
 
         $allowedHeaders = $this->getChannelConfig()[self::OPT_SENDER_HEADERS] ?? [];
         if (!$allowedHeaders) { // if empty consider that all needed
-            foreach ($request->getHeaders() as $header) {
-                $headers[$header->getName()][] = $header->getValue();
+            foreach ($initialRequest->headers as $name => $values) {
+                foreach ($values as $value) {
+                    $headers[$name][] = $value;
+                }
             }
 
             return;
@@ -609,25 +607,16 @@ class HttpGraphChannel extends AbstractChannel
     {
         // TODO: dispatcher extend with config request resulting object
         // TODO: add headers from config
-
-        $requestConfig = $request->getConfig();
-
         $targetResponse = new HttpResponse();
         $targetResponse->setId($request->getId());
         $targetResponse->setStatusCode($srcResponse->getStatusCode());
         $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
 
-        // TODO: check config merge strategy
-        if ($requestConfig && $requestConfig->getFormat()) {
-            $format = $requestConfig->getFormat();
-        } else {
-            $format = $this->getMasterConfig()[self::OPT_RESOURCE_FORMAT];
-        }
-
+        $format = $request->getConfig()->getFormat();
         $this->genResponseBody($format, $srcResponse, $targetResponse);
 
         if ($this->dispatcher) {
-            $event = new BuildResponseEvent($targetResponse, $srcResponse, $requestConfig);
+            $event = new BuildResponseEvent($targetResponse, $srcResponse, $request->getConfig());
             $this->dispatcher->dispatch(BuildResponseEvent::EVENT_POST_BUILD, $event);
             $targetResponse = $event->getTargetResponse();
         }

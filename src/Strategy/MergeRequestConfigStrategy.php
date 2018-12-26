@@ -81,7 +81,7 @@ class MergeRequestConfigStrategy extends AbstractMergeConfigStrategy
         $mergeStrategy = $this->mergeConfigStrategies[$this->configMerge];
         $channelStrategy = $this->channelMergeConfigStrategies[$this->configMerge];
 
-        $resultingConfig = $mergeStrategy->merge($configs);
+        $resultingConfig = $mergeStrategy->merge(...$configs);
         $resultingConfig['channel'] = $channelStrategy->merge(...$channelConfigs); // merge channel configs
 
         return $resultingConfig;

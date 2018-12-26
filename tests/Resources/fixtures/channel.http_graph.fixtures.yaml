@@ -473,3 +473,91 @@ sendProvider:
             errors:
                 ask-foo: 'Request failed to complete.'
 
+clientRequestProvider:
+    -   # test forwarding receiver headers
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+                    sender_headers: [X-Client]
+                    receiver_headers: [X-Data]
+
+        client:
+            headers: { X-Client: ['mobile-app'], X-Via: [proxy] }
+
+        input:
+            data:
+                -   uri: 'http://example.com/foo'
+                    id: ask-foo
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                    X-Data: ['important payload']
+                data: '{"id":1}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                    X-Client: mobile-app
+
+        output:
+            ok:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: X-Data, value: 'important payload' }]
+                    statusCode: 200
+                    data: { id: 1 }
+            failed: []
+            errors: []
+
+    -   # test not set sender_headers
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+                    sender_headers: []
+                    receiver_headers: [X-Data]
+
+        client:
+            headers: { X-Client: ['mobile-app'], X-Via: [proxy] }
+
+        input:
+            data:
+                -   uri: 'http://example.com/foo'
+                    id: ask-foo
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                    X-Data: ['important payload']
+                data: '{"id":1}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                    x-client: [mobile-app]
+                    x-via: [proxy]
+
+        output:
+            ok:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: X-Data, value: 'important payload' }]
+                    statusCode: 200
+                    data: { id: 1 }
+            failed: []
+            errors: []
+
