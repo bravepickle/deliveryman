@@ -208,11 +208,7 @@ class HttpGraphChannel extends AbstractChannel
     protected function chainSendRequest(GraphNode $node, Client $client)
     {
         /** @var HttpRequest $request */
-        $request = $node->getData()['request'] ?? null;
-        if (!$request) {
-            throw new LogicException('Request data was not found in node\'s payload.');
-        }
-
+        $request = $node->getData()['request'];
         $options = $this->buildRequestOptions($request);
         $this->setNodeState($node, self::NODE_STATE_SEND_STARTED);
         // TODO: add event dispatching
@@ -319,8 +315,8 @@ class HttpGraphChannel extends AbstractChannel
      */
     protected function getExpectedStatusCodesWithFallback(HttpRequest $request)
     {
-        $globalConfig = $this->batchRequest->getConfig() ? $this->batchRequest->getConfig()->getChannel() : null;
-        $requestConfig = $request->getConfig() ? $request->getConfig()->getChannel() : null;
+        $globalConfig = $this->batchRequest->getConfig() ? $this->batchRequest->getConfig() : null;
+        $requestConfig = $request->getConfig() ? $request->getConfig() : null;
         $statusCodes = $this->mergeExpectedStatusCodes($requestConfig, $globalConfig);
 
         return $statusCodes ?: $this->getChannelConfig()[self::OPT_EXPECTED_STATUS_CODES] ?? []; // fallback
@@ -341,23 +337,25 @@ class HttpGraphChannel extends AbstractChannel
     }
 
     /**
-     * @param ChannelConfig|null $requestCfg
+     * @param RequestConfig|null $requestCfg
      * @param RequestConfig|null $globalConfig
      * @return array|null
      * @throws ChannelException
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function mergeExpectedStatusCodes(?ChannelConfig $requestCfg, ?RequestConfig $globalConfig): ?array
+    protected function mergeExpectedStatusCodes(?RequestConfig $requestCfg, ?RequestConfig $globalConfig): ?array
     {
-        $configMerge = $globalConfig ? $globalConfig->getConfigMerge() : $this->getMasterConfig()[self::OPT_CONFIG_MERGE];
+        // TODO: move merging configs to separate classes as each merge type as separate strategy class
+        $reqChannelCfg = $requestCfg ? $requestCfg->getChannel() : null;
+        $configMerge = $this->getConfigMergeWithFallback($requestCfg, $globalConfig);
         $generalCfg = $globalConfig ? $globalConfig->getChannel() : null;
         $channelConfig = $this->getChannelConfig();
         switch ($configMerge) {
             case RequestConfig::CFG_MERGE_IGNORE:
                 return $channelConfig[self::OPT_EXPECTED_STATUS_CODES];
             case RequestConfig::CFG_MERGE_FIRST:
-                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
-                    return $requestCfg->getExpectedStatusCodes();
+                if ($reqChannelCfg && $reqChannelCfg->getExpectedStatusCodes()) {
+                    return $reqChannelCfg->getExpectedStatusCodes();
                 } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
                     return $generalCfg->getExpectedStatusCodes();
                 } else {
@@ -365,19 +363,19 @@ class HttpGraphChannel extends AbstractChannel
                 }
                 break;
             case RequestConfig::CFG_MERGE_UNIQUE:
-                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
+                if ($requestCfg && $reqChannelCfg->getExpectedStatusCodes()) {
                     if ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
                         return array_merge(
-                            $requestCfg->getExpectedStatusCodes(),
+                            $reqChannelCfg->getExpectedStatusCodes(),
                             $generalCfg->getExpectedStatusCodes()
                         );
                     } else {
-                        return $requestCfg->getExpectedStatusCodes();
+                        return $reqChannelCfg->getExpectedStatusCodes();
                     }
                 } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
-                    if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
+                    if ($requestCfg && $reqChannelCfg->getExpectedStatusCodes()) {
                         return array_merge(
-                            $requestCfg->getExpectedStatusCodes(),
+                            $reqChannelCfg->getExpectedStatusCodes(),
                             $generalCfg->getExpectedStatusCodes()
                         );
                     } else {
@@ -743,6 +741,23 @@ class HttpGraphChannel extends AbstractChannel
             }
             break;
         }
+    }
+
+    /**
+     * @param RequestConfig|null $requestCfg
+     * @param RequestConfig|null $globalConfig
+     * @return mixed|string|null
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function getConfigMergeWithFallback(?RequestConfig $requestCfg, ?RequestConfig $globalConfig)
+    {
+        if ($requestCfg && $requestCfg->getConfigMerge()) {
+            return $requestCfg->getConfigMerge();
+        } elseif ($globalConfig && $globalConfig->getConfigMerge()) {
+            return $globalConfig->getConfigMerge();
+        }
+
+        return $this->getMasterConfig()[self::OPT_CONFIG_MERGE];
     }
 
 }

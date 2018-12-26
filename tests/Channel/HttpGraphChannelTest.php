@@ -10,6 +10,7 @@ use Deliveryman\Channel\HttpGraphChannel;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\HttpGraph\HttpRequest;
 use Deliveryman\Entity\HttpHeader;
+use Deliveryman\Entity\HttpQueue\ChannelConfig;
 use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Entity\RequestConfig;
 use Deliveryman\Exception\ChannelException;
@@ -104,11 +105,17 @@ class HttpGraphChannelTest extends TestCase
                     }
 
                     if (!empty($req['config'])) {
+                        if (!empty($req['config']['channel'])) {
+                            $req['config']['channel'] = (new ChannelConfig())
+                                ->setExpectedStatusCodes($req['config']['channel']['expected_status_codes'] ?? null);
+                        }
+
                         $req['config'] = (new RequestConfig())
                             ->setConfigMerge($req['config']['config_merge'] ?? null)
                             ->setOnFail($req['config']['on_fail'] ?? null)
                             ->setSilent($req['config']['silent'] ?? null)
                             ->setFormat($req['config']['format'] ?? null)
+                            ->setChannel($req['config']['channel'] ?? null)
                         ;
                     }
 
@@ -126,11 +133,18 @@ class HttpGraphChannelTest extends TestCase
             }
 
             if (!empty($datum['input']['config'])) {
+                if (!empty($datum['input']['config']['channel'])) {
+                    $datum['input']['config']['channel'] = (new ChannelConfig())
+                        ->setExpectedStatusCodes(
+                            $datum['input']['config']['channel']['expected_status_codes'] ?? null);
+                }
+
                 $datum['input']['config'] = (new RequestConfig())
                     ->setConfigMerge($datum['input']['config']['config_merge'] ?? null)
                     ->setOnFail($datum['input']['config']['on_fail'] ?? null)
                     ->setSilent($datum['input']['config']['silent'] ?? null)
                     ->setFormat($datum['input']['config']['format'] ?? null)
+                    ->setChannel($datum['input']['config']['channel'] ?? null)
                 ;
             }
 

@@ -300,3 +300,176 @@ sendProvider:
                 ask-foo: 'Request failed to complete.'
                 ask-bar: 'Request failed to complete.'
 
+    -   # config: general.silent=true, general.on_fail=abort-queue
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+            silent: true
+            on_fail: abort-queue
+        input:
+            data:
+                - { uri: 'http://example.com/foo', id: ask-foo}
+                - { uri: 'http://example.com/bar', id: ask-bar, req: [ask-foo] }
+
+        responses:
+            -   statusCode: 200
+                headers: []
+                data: 'Ok'
+
+            -   statusCode: 400
+                headers: []
+                data: 'Bad request'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+
+            -   method: GET
+                uri: 'http://example.com/bar'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+
+        output:
+            failed:
+                ask-bar:
+                    id: ask-bar
+                    headers: []
+                    statusCode: 400
+                    data: Bad request
+            ok:
+                ask-foo:
+                    id: ask-foo
+                    headers: []
+                    statusCode: 200
+                    data: Ok
+            errors:
+                ask-bar: 'Request failed to complete.'
+
+    -   # app.config_merge=ignore
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+            config_merge: ignore
+        input:
+            data:
+                - { uri: 'http://example.com/foo', id: ask-foo }
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                data: '{"id":1}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                data: ''
+
+        output:
+            ok:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: Content-Type, value: application/json }]
+                    statusCode: 200
+                    data: { id: 1 }
+            failed: []
+            errors: []
+
+    -   # app.config_merge=ignore, request.config_merge=first, expected_status_codes=400, on_fail=proceed
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+            config_merge: ignore
+            on_fail: proceed
+        input:
+            data:
+                -   uri: 'http://example.com/foo'
+                    id: ask-foo
+                    config:
+                        channel: { expected_status_codes: [400] }
+                        config_merge: first
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                data: '{"id":1}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                data: ''
+
+        output:
+            failed:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: Content-Type, value: application/json }]
+                    statusCode: 200
+                    data: { id: 1 }
+            ok: []
+            errors:
+                ask-foo: 'Request failed to complete.'
+
+
+    -   # app.config_merge=ignore, general.config_merge=first, expected_status_codes=400, on_fail=proceed
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+            config_merge: ignore
+            on_fail: proceed
+        input:
+            config:
+                channel: { expected_status_codes: [400] }
+                config_merge: first
+            data:
+                -   uri: 'http://example.com/foo'
+                    id: ask-foo
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                data: '{"id":1}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                data: ''
+
+        output:
+            failed:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: Content-Type, value: application/json }]
+                    statusCode: 200
+                    data: { id: 1 }
+            ok: []
+            errors:
+                ask-foo: 'Request failed to complete.'
+
