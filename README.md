@@ -99,7 +99,8 @@ The following steps should be taken to make agent working properly:
 ## Usage Examples
 
 ## TODO
-- [x] Swagger config documentation.
+- [ ] Swagger config documentation.
+- [ ] Remove http_queue channel. Use http_graph instead. Cleanup tests and docs
 - [ ] Remove symfony/http-foundation from dependencies if guzzlehttp/psr7 is feasible enough.
 - [ ] Authorization: optional, configurable. Provide only with interface and some simple provider - check hardcoded API keys
 - [ ] Update usage of Exception classes within library. Must be properly defined

@@ -19,7 +19,7 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  * Is a facade for sending parsed batch request
  * @package Deliveryman\Service
  */
-class Sender
+class Sender implements SenderInterface
 {
     /**
      * @var ChannelInterface
@@ -62,14 +62,10 @@ class Sender
     }
 
     /**
-     * Process batch request queries
-     * @param BatchRequest $batchRequest
-     * @return BatchResponse
-     * @throws SendingException
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @inheritdoc
      * @throws SerializationException
      */
-    public function send(BatchRequest $batchRequest)
+    public function send(BatchRequest $batchRequest): BatchResponse
     {
         $this->channel->clear();
         if (!$batchRequest->getData()) {
