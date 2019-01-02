@@ -7,6 +7,8 @@ use Deliveryman\Entity\ResponseItemInterface;
 
 abstract class AbstractChannel implements ChannelInterface
 {
+    const NAME = null; // must be redefined in subclasses
+
     /**
      * @var array
      */
@@ -134,5 +136,11 @@ abstract class AbstractChannel implements ChannelInterface
         $this->clearOkResponses();
     }
 
-
+    /**
+     * @return string
+     */
+    public function getName(): string
+    {
+        return static::NAME;
+    }
 }

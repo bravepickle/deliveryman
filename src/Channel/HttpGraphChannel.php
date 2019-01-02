@@ -309,14 +309,6 @@ class HttpGraphChannel extends AbstractChannel
     }
 
     /**
-     * @return string
-     */
-    public function getName(): string
-    {
-        return self::NAME;
-    }
-
-    /**
      * @param HttpRequest $request
      * @return array
      * @throws \Psr\Cache\InvalidArgumentException

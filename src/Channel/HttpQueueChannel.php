@@ -31,6 +31,8 @@ use Symfony\Component\Serializer\Exception\NotEncodableValueException;
  */
 class HttpQueueChannel extends AbstractChannel
 {
+    const NAME = 'http_queue';
+
     const MSG_REQUEST_FAILED = 'Request failed to complete.';
     const OPT_RECEIVER_HEADERS = 'receiver_headers';
     const OPT_SENDER_HEADERS = 'sender_headers';
@@ -255,14 +257,6 @@ class HttpQueueChannel extends AbstractChannel
     }
 
     /**
-     * @return string
-     */
-    public function getName(): string
-    {
-        return 'http_queue';
-    }
-
-    /**
      * @param Request $request
      * @return array
      * @throws \Psr\Cache\InvalidArgumentException
@@ -327,12 +321,12 @@ class HttpQueueChannel extends AbstractChannel
 
     /**
      * @param ChannelConfig|null $requestCfg
-     * @param RequestConfig|null $globalConfig
+     * @param ChannelConfig|null $globalConfig
      * @return array|null
      * @throws ChannelException
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function mergeExpectedStatusCodes(?ChannelConfig $requestCfg, ?RequestConfig $globalConfig): ?array
+    protected function mergeExpectedStatusCodes(?ChannelConfig $requestCfg, ?ChannelConfig $globalConfig): ?array
     {
         $configMerge = $globalConfig ? $globalConfig->getConfigMerge() : $this->getMasterConfig()[self::OPT_CONFIG_MERGE];
         $generalCfg = $globalConfig ? $globalConfig->getChannel() : null;

@@ -10,7 +10,6 @@ use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestConfig;
 use Deliveryman\EventListener\EventSender;
 use Deliveryman\Exception\ChannelException;
-use Deliveryman\Exception\SendingException;
 use Deliveryman\Exception\SerializationException;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -68,12 +67,8 @@ class Sender implements SenderInterface
     public function send(BatchRequest $batchRequest): BatchResponse
     {
         $this->channel->clear();
-        if (!$batchRequest->getData()) {
-            throw new SendingException('No data with requests specified to process.');
-        }
-
         $channel = $this->channel;
-        $errors = $this->validator->validate($batchRequest);
+        $errors = $this->validator->validate($batchRequest, ['Default', $this->channel->getName()]);
         if (!empty($errors)) {
             return $this->wrapErrors($errors);
         }
@@ -209,8 +204,6 @@ class Sender implements SenderInterface
         $succeededResp = [];
         $failedResp = [];
 
-        // TODO: check expected status codes and split responses to good and bad
-
         foreach ($channel->getOkResponses() as $id => $srcResponse) {
             $requestConfig = $requests[$id]->getConfig();
 
@@ -287,7 +280,6 @@ class Sender implements SenderInterface
      * @param RequestConfig|null $generalCfg
      * @param string|null $cfgMergeStrategy
      * @return RequestConfig
-     * @throws SerializationException
      */
     protected function mergeRequestConfigScopes(array $appConfig, ?RequestConfig $requestCfg, ?RequestConfig $generalCfg, ?string $cfgMergeStrategy): RequestConfig
     {
@@ -310,7 +302,6 @@ class Sender implements SenderInterface
      * @param array $appConfig
      * @param RequestConfig|null $requestCfg
      * @return RequestConfig
-     * @throws SerializationException
      */
     protected function mergeRequestConfigDefaults(array $appConfig, RequestConfig $requestCfg): RequestConfig
     {
