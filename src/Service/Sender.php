@@ -228,6 +228,7 @@ class Sender implements SenderInterface
      */
     protected function buildRequestConfig(Request $request, BatchRequest $batchRequest, array $appConfig)
     {
+        // TODO: use merge config strategy instead or remove it because it should be done inside channels
         $requestCfg = $request->getConfig();
         $generalCfg = $batchRequest->getConfig();
 
