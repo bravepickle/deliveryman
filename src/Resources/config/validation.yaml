@@ -47,7 +47,7 @@ Deliveryman\Entity\HttpGraph\HttpRequest:
                     -   Type: string
         uri:
             -   NotBlank: ~
-            -   URL: ~
+            -   Url: ~
         method:
             -   Choice: [GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS]
         config:

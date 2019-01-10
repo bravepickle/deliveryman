@@ -4,13 +4,13 @@ batchRequestProvider:
             domains:
                 - 'http://example.com'
             channels:
-                http_queue:
+                http_graph:
                     request_options: { debug: false, allow_redirects: false, headers: { User-Agent: [testing/1.0] } }
 
         input:
             data:
-                -   - { uri: 'http://example.com/ask-something', id: ask-something }
-                    - { uri: 'http://example.com/do-something', method: PUT, data: encoded_text }
+                - { uri: 'http://example.com/ask-something', id: ask-something }
+                - { uri: 'http://example.com/do-something', method: PUT, data: encoded_text, req: [ask-something] }
 
         responses:
             -   statusCode: 200
@@ -57,7 +57,7 @@ configProvider:
                 - 'http://example.com'
             silent: true
             channels:
-                http_queue:
+                http_graph:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
         input:
             data:
@@ -84,7 +84,7 @@ configProvider:
                 - 'http://example.com'
             silent: true
             channels:
-                http_queue:
+                http_graph:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
                     expected_status_codes: [200]
         input:
@@ -133,7 +133,7 @@ configProvider:
                 - 'http://example.com'
             silent: false
             channels:
-                http_queue:
+                http_graph:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
         input:
             data:
@@ -174,7 +174,7 @@ configProvider:
                 - 'http://example.com'
             on_fail: abort
             channels:
-                http_queue:
+                http_graph:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
         input:
             data:
@@ -207,7 +207,7 @@ clientRequestProvider:
             domains:
                 - 'http://example.com'
             channels:
-                http_queue:
+                http_graph:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
                     sender_headers:
                         - x-foo

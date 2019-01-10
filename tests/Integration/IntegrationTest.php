@@ -6,7 +6,7 @@
 
 namespace DeliverymanTest\Integration;
 
-use Deliveryman\Channel\HttpQueueChannel;
+use Deliveryman\Channel\HttpGraphChannel;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Normalizer\BatchRequestNormalizer;
 use Deliveryman\Service\BatchRequestValidator;
@@ -84,7 +84,7 @@ class IntegrationTest extends TestCase
         }
 
         return new Sender(
-            new HttpQueueChannel($configManager, $requestStack),
+            new HttpGraphChannel($configManager, $requestStack),
             $configManager,
             new BatchRequestValidator($configManager)
         );
@@ -110,7 +110,7 @@ class IntegrationTest extends TestCase
         array $output
     ) {
         $mockHandler = new MockHandler($responses);
-        $config['channels']['http_queue']['request_options']['handler'] = HandlerStack::create(function (
+        $config['channels']['http_graph']['request_options']['handler'] = HandlerStack::create(function (
             RequestInterface $request,
             array $options
         ) use ($mockHandler, &$expectedRequests) {
@@ -134,6 +134,9 @@ class IntegrationTest extends TestCase
 
         $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json'));
         $actual = $serializer->normalize($batchResponse);
+
+        print_r($output);
+        print_r($actual);
 
         $this->assertEquals($output, $actual);
     }
@@ -160,7 +163,7 @@ class IntegrationTest extends TestCase
         $masterRequest->headers->add($input['headers']);
 
         $mockHandler = new MockHandler($responses);
-        $config['channels']['http_queue']['request_options']['handler'] = HandlerStack::create(function (
+        $config['channels']['http_graph']['request_options']['handler'] = HandlerStack::create(function (
             RequestInterface $request,
             array $options
         ) use ($mockHandler, &$expectedRequests) {

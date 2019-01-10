@@ -4,7 +4,7 @@ namespace Deliveryman\Normalizer;
 
 
 use Deliveryman\Entity\BatchRequest;
-use Deliveryman\Entity\HttpQueue\ChannelConfig;
+use Deliveryman\Entity\HttpGraph\ChannelConfig;
 use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestConfig;
 use Deliveryman\Entity\HttpHeader;
@@ -26,6 +26,43 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
      * Ignore given entity if this field is set in context
      */
     const CONTEXT_IGNORE = 'deliveryman_ignore';
+
+    /**
+     * @var ChannelNormalizerInterface[]
+     */
+    protected $channelNormalizers = [];
+
+    /**
+     * BatchRequestNormalizer constructor.
+     * @param ChannelNormalizerInterface[] $channelNormalizers
+     */
+    public function __construct(array $channelNormalizers = [])
+    {
+        if ($channelNormalizers) {
+            $this->channelNormalizers = $channelNormalizers;
+        } else {
+            $this->addDefaultChannelNormalizers();
+        }
+    }
+
+    /**
+     * Add default normalizers
+     */
+    protected function addDefaultChannelNormalizers()
+    {
+        $this->addChannelNormalizer(new HttpGraphChannelNormalizer($this->getSerializer()));
+    }
+
+    /**
+     * @param ChannelNormalizerInterface $normalizer
+     * @return $this
+     */
+    public function addChannelNormalizer(ChannelNormalizerInterface $normalizer)
+    {
+        $this->channelNormalizers[] = $normalizer;
+
+        return $this;
+    }
 
     /**
      * @return \Symfony\Component\Serializer\SerializerInterface|DenormalizerInterface
@@ -59,7 +96,7 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
             case Request::class:
                 return $this->denormalizeRequest($data, $class, $format, $context);
             case RequestConfig::class:
-                return $this->denormalizeRequestConfig($data, $class, $format, $context);
+                return $this->denormalizeRequestConfig($data, $class, $context);
             case HttpHeader::class:
                 return $this->denormalizeRequestHeader($data, $class, $context);
             default:
@@ -113,12 +150,11 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
     /**
      * @param mixed $data
      * @param string $class
-     * @param null $format
      * @param array $context
      * @return object|BatchRequest
      * @throws SerializationException
      */
-    protected function denormalizeRequestConfig($data, $class, $format, $context)
+    protected function denormalizeRequestConfig($data, $class, $context)
     {
         /** @var RequestConfig $object */
         $object = $this->extractObjectToPopulate($class, $context) ?: new $class();
@@ -129,10 +165,30 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
         $object->setSilent($data['silent'] ?? null);
 
         if (isset($data['channel'])) {
-            $object->setChannel($this->getSerializer()->denormalize($data['channel'], ChannelConfig::class, $format));
+            $object->setChannel(
+                $this->detectChannelNormalizer($data['channel'], $context)
+                    ->denormalizeConfig($data['channel'], $context)
+            );
         }
 
         return $object;
+    }
+
+    /**
+     * @param $data
+     * @param array $context
+     * @return ChannelNormalizerInterface
+     * @throws SerializationException
+     */
+    protected function detectChannelNormalizer($data, array $context): ChannelNormalizerInterface
+    {
+        foreach ($this->channelNormalizers as $normalizer) {
+            if ($normalizer->supports($data, $context)) {
+                return $normalizer;
+            }
+        }
+
+        throw new SerializationException('Cannot detect channel type.');
     }
 
     /**
@@ -174,7 +230,15 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
             $object->setQuery($data['query']);
         }
 
-        $object->setData($data['data'] ?? null);
+        if (isset($data['data'])) {
+            $object->setData(
+                $this->detectChannelNormalizer($data['data'], $context)
+                    ->denormalizeData($data['data'], $context)
+            );
+        }
+
+        // TODO: select normalizer for channel
+//        $object->setData(isset($data['data']) ? $this->getSerializer()->denormalize($data['data']) : null);
 
         return $object;
     }
@@ -218,47 +282,50 @@ class BatchRequestNormalizer implements SerializerAwareInterface, DenormalizerIn
         $object->setConfig($requestConfig);
 
         if (!empty($data['data'])) {
-            $object->setData($this->denormalizeQueues($data['data'], $format));
+            $object->setData(
+                $this->detectChannelNormalizer($data, $context)
+                    ->denormalizeData($data, $context)
+            );
         }
 
         return $object;
     }
 
-    /**
-     * @param array $items
-     * @param string $format
-     * @return array
-     * @throws SerializationException
-     */
-    protected function denormalizeQueues($items, $format)
-    {
-        if (!is_array($items)) {
-            throw new MappingException('Field "data" must contain an array.');
-        }
-
-        $class = Request::class;
-        $queues = [];
-        $serializer = $this->getSerializer();
-
-        foreach ($items as $queue) {
-            if (!is_array($queue)) {
-                throw new InvalidArgumentException('Field "data" must contain an array of requests.');
-            } elseif (array_key_exists('uri', $queue)) {
-                $queue = [$queue]; // wrap single request with array
-            }
-
-            $requests = [];
-            foreach ($queue as $requestItem) {
-                if (!$serializer->supportsDenormalization($requestItem, $class, $format)) {
-                    throw new SerializationException('Cannot denormalize data for class: ' . $class . '.');
-                }
-
-                $requests[] = $serializer->denormalize($requestItem, $class, $format);
-            }
-
-            $queues[] = $requests;
-        }
-
-        return $queues;
-    }
+//    /**
+//     * @param array $items
+//     * @param string $format
+//     * @return array
+//     * @throws SerializationException
+//     */
+//    protected function denormalizeQueues($items, $format)
+//    {
+//        if (!is_array($items)) {
+//            throw new MappingException('Field "data" must contain an array.');
+//        }
+//
+//        $class = Request::class;
+//        $queues = [];
+//        $serializer = $this->getSerializer();
+//
+//        foreach ($items as $queue) {
+//            if (!is_array($queue)) {
+//                throw new InvalidArgumentException('Field "data" must contain an array of requests.');
+//            } elseif (array_key_exists('uri', $queue)) {
+//                $queue = [$queue]; // wrap single request with array
+//            }
+//
+//            $requests = [];
+//            foreach ($queue as $requestItem) {
+//                if (!$serializer->supportsDenormalization($requestItem, $class, $format)) {
+//                    throw new SerializationException('Cannot denormalize data for class: ' . $class . '.');
+//                }
+//
+//                $requests[] = $serializer->denormalize($requestItem, $class, $format);
+//            }
+//
+//            $queues[] = $requests;
+//        }
+//
+//        return $queues;
+//    }
 }

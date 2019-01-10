@@ -7,6 +7,7 @@
 namespace Deliveryman\DependencyInjection;
 
 
+use Deliveryman\Channel\HttpGraphChannel;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\Config\Definition\Builder\NodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
@@ -50,13 +51,16 @@ class Configuration implements ConfigurationInterface
     protected function addChannelsBranch(NodeBuilder $rootNode): void
     {
         $defaultValues = [ // TODO: update defaults after all options will be reconfigured, add missing
-            'http_queue' => [
+            'http_graph' => [
                 'request_options' => [
                     'allow_redirects' => false,
                     'connect_timeout' => 10,
                     'timeout' => 30,
                     'debug' => false,
                 ],
+                'sender_headers' => [],
+                'receiver_headers' => [],
+                'expected_status_codes' => [200, 201, 202, 204],
             ],
         ];
 
@@ -67,43 +71,6 @@ class Configuration implements ConfigurationInterface
             ->treatTrueLike($defaultValues)
             ->treatNullLike($defaultValues)
             ->children()
-                ->arrayNode('http_queue')
-                    ->info('HTTP requests organized in queues and has simple unidirectional dependencies')
-                    ->addDefaultsIfNotSet()
-                    ->children()
-                        ->arrayNode('request_options')
-                            ->isRequired()
-                            ->info('Request options for Guzzle client library')
-                            ->defaultValue($defaultValues['http_queue']['request_options'])
-                            ->variablePrototype()->end()
-                        ->end()
-                        ->arrayNode('sender_headers')
-                            ->info('Pass initial request headers from sender to receiver. ' .
-                                'If set to NULL or FALSE then no headers will be forwarded.')
-                            ->beforeNormalization()->castToArray()->end()
-                            ->defaultValue([])
-                            ->treatNullLike([])
-                            ->example(['Origin', 'Cookie', 'Authorization'])
-                            ->scalarPrototype()->cannotBeEmpty()->end()
-                        ->end()
-                        ->arrayNode('receiver_headers')
-                            ->beforeNormalization()->castToArray()->end()
-                            ->info('Pass response headers from receiver to sender. If set to TRUE then ' .
-                                'all receiver headers will be displayed to sender inside batch response body')
-                            ->defaultValue([])
-                            ->example(['Set-Cookie'])
-                            ->scalarPrototype()->cannotBeEmpty()->end()
-                        ->end()
-                        ->arrayNode('expected_status_codes')
-                            ->info('List of all status codes that are considered OK, if returned. ' .
-                                'If any other status codes received by requests, then request is considered as failed.')
-                            ->example([200, 422, 400])
-                            ->defaultValue([200, 201, 202, 204])
-                            ->requiresAtLeastOneElement()
-                            ->scalarPrototype()->end()
-                        ->end()
-                    ->end()
-                ->end()
                 ->arrayNode('http_graph')
                     ->info('HTTP requests that have dependencies similar to directed tree graph format')
                     ->addDefaultsIfNotSet()
@@ -111,7 +78,7 @@ class Configuration implements ConfigurationInterface
                         ->arrayNode('request_options')
                             ->isRequired()
                             ->info('Request options for Guzzle client library')
-                            ->defaultValue($defaultValues['http_queue']['request_options'])
+                            ->defaultValue($defaultValues['http_graph']['request_options'])
                             ->variablePrototype()->end()
                         ->end()
                         ->arrayNode('sender_headers')
@@ -135,7 +102,7 @@ class Configuration implements ConfigurationInterface
                             ->info('List of all status codes that are considered OK, if returned. ' .
                                 'If any other status codes received by requests, then request is considered as failed.')
                             ->example([200, 422, 400])
-                            ->defaultValue([200, 201, 202, 204])
+                            ->defaultValue($defaultValues['http_graph']['expected_status_codes'])
                             ->requiresAtLeastOneElement()
                             ->scalarPrototype()->end()
                         ->end()
