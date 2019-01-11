@@ -6,11 +6,9 @@ namespace Deliveryman\Service;
 use Deliveryman\Channel\ChannelInterface;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
-use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestConfig;
 use Deliveryman\EventListener\EventSender;
 use Deliveryman\Exception\ChannelException;
-use Deliveryman\Exception\SerializationException;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -62,7 +60,6 @@ class Sender implements SenderInterface
 
     /**
      * @inheritdoc
-     * @throws SerializationException
      */
     public function send(BatchRequest $batchRequest): BatchResponse
     {
@@ -72,8 +69,6 @@ class Sender implements SenderInterface
         if (!empty($errors)) {
             return $this->wrapErrors($errors);
         }
-
-        $requests = $this->mergeConfigsPerRequest($batchRequest);
 
         $aborted = false;
         if (!$this->dispatcher) {
@@ -92,22 +87,20 @@ class Sender implements SenderInterface
             $channel = $event->getChannel();
         }
 
-        return $this->wrapResponses($channel, $requests, $aborted);
+        return $this->wrapResponses($channel, $aborted);
     }
 
     /**
      * @param ChannelInterface $channel
-     * @param array|Request[] $requests
      * @param bool $aborted
      * @return BatchResponse
      */
     protected function wrapResponses(
         ChannelInterface $channel,
-        array $requests,
         bool $aborted
     ): BatchResponse
     {
-        list($okResp, $failResp) = $this->buildResponses($channel, $requests);
+        list($okResp, $failResp) = $this->buildResponses($channel);
 
         $batchResponse = new BatchResponse();
         if ($aborted) {
@@ -156,60 +149,16 @@ class Sender implements SenderInterface
     }
 
     /**
-     * Return list of request IDs map with resource expected formats
-     * @param array $queues
-     * @return array
-     */
-    protected function mapRequestIds(array $queues): array
-    {
-        $map = [];
-        foreach ($queues as $queue) {
-            /** @var Request $request */
-            foreach ($queue as $request) {
-                $map[$request->getId()] = $request;
-            }
-        }
-
-        return $map;
-    }
-
-    /**
-     * Map requests meta data to Ids
-     * @param BatchRequest $batchRequest
-     * @return array|RequestConfig[]
-     * @throws SerializationException
-     * @throws \Psr\Cache\InvalidArgumentException
-     */
-    protected function mergeConfigsPerRequest(BatchRequest $batchRequest): array
-    {
-        $appConfig = $this->getMasterConfig();
-        $requestsMap = $this->mapRequestIds($batchRequest->getData());
-        $map = [];
-        /** @var Request $request */
-        foreach ($requestsMap as $id => $request) {
-            // update config with merged one
-            $map[$id] = $request->setConfig($this->buildRequestConfig($request, $batchRequest, $appConfig));
-        }
-
-        return $map;
-    }
-
-    /**
      * @param ChannelInterface $channel
-     * @param array|Request[] $requests mapped requests by ids
      * @return array
      */
-    protected function buildResponses(ChannelInterface $channel, array $requests): array
+    protected function buildResponses(ChannelInterface $channel): array
     {
         $succeededResp = [];
         $failedResp = [];
 
         foreach ($channel->getOkResponses() as $id => $srcResponse) {
-            $requestConfig = $requests[$id]->getConfig();
-
-            if (!$requestConfig->getSilent()) {
-                $succeededResp[$srcResponse->getId()] = $srcResponse;
-            }
+            $succeededResp[$srcResponse->getId()] = $srcResponse;
         }
 
         foreach ($channel->getFailedResponses() as $id => $srcResponse) {
@@ -217,46 +166,6 @@ class Sender implements SenderInterface
         }
 
         return [$succeededResp, $failedResp];
-    }
-
-    /**
-     * @param Request $request
-     * @param BatchRequest $batchRequest
-     * @param array $appConfig
-     * @return RequestConfig
-     * @throws SerializationException
-     */
-    protected function buildRequestConfig(Request $request, BatchRequest $batchRequest, array $appConfig)
-    {
-        // TODO: use merge config strategy instead or remove it because it should be done inside channels
-        $requestCfg = $request->getConfig();
-        $generalCfg = $batchRequest->getConfig();
-
-        if (!$generalCfg) {
-            if ($requestCfg) {
-                return $this->mergeRequestConfigDefaults($appConfig, $requestCfg);
-            }
-
-            return $this->genDefaultConfig($appConfig);
-        }
-
-        if ($requestCfg) {
-            $cfgMergeStrategy = $requestCfg->getConfigMerge() ?? $generalCfg->getConfigMerge() ??
-                $appConfig['config_merge'];
-
-            switch ($cfgMergeStrategy) {
-                case RequestConfig::CFG_MERGE_FIRST: return $this->mergeRequestConfigDefaults($appConfig, $requestCfg);
-                case RequestConfig::CFG_MERGE_UNIQUE:
-                    return $this->mergeRequestConfigScopes($appConfig, $requestCfg, $generalCfg, $cfgMergeStrategy);
-                case RequestConfig::CFG_MERGE_IGNORE: return $this->genDefaultConfig($appConfig);
-                default:
-                    throw new SerializationException('Unexpected config merge strategy type: ' .
-                        $cfgMergeStrategy
-                    );
-            }
-        } else {
-            return clone $generalCfg;
-        }
     }
 
     /**

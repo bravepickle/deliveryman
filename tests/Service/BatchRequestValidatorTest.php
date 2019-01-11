@@ -10,7 +10,7 @@ use Deliveryman\Channel\HttpGraphChannel;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\HttpGraph\ChannelConfig;
 use Deliveryman\Entity\HttpGraph\HttpRequest;
-use Deliveryman\Entity\HttpHeader;
+use Deliveryman\Entity\HttpGraph\HttpHeader;
 use Deliveryman\Entity\RequestConfig;
 use Deliveryman\EventListener\Event;
 use Deliveryman\Service\BatchRequestValidator;

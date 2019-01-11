@@ -7,24 +7,16 @@
 namespace Deliveryman\Entity\HttpGraph;
 
 
-use Deliveryman\Entity\HttpHeader;
 use Deliveryman\Entity\IdentifiableInterface;
 use Deliveryman\Entity\RequestConfig;
-use Deliveryman\Normalizer\NormalizableInterface;
 
-class HttpRequest implements NormalizableInterface, IdentifiableInterface
+class HttpRequest implements IdentifiableInterface
 {
     /**
      * Identifier for given request for referencing aka alias
      * @var mixed
      */
     protected $id;
-
-    /**
-     * List of IDs of HttpRequests that are required to be processed before the given one
-     * @var array
-     */
-    protected $req = [];
 
     /**
      * Target URI to send data to
@@ -61,11 +53,34 @@ class HttpRequest implements NormalizableInterface, IdentifiableInterface
     protected $data;
 
     /**
+     * List of IDs of HttpRequests that are required to be processed before the given one
+     * @var array
+     */
+    protected $req = [];
+
+    /**
+     * @param bool $guess generate ID if empty
      * @return mixed
      */
-    public function getId()
+    public function getId($guess = true)
     {
-        return $this->id;
+        if ($this->id || !$guess) {
+            return $this->id;
+        }
+
+        // Generate alias for request to identify this request
+        if (!$this->getMethod()) {
+            // guess method
+            $id = $this->getData() ? 'POST' : 'GET';
+        } else {
+            $id = strtoupper($this->getMethod());
+        }
+
+        if ($this->getUri()) {
+            $id .= '_' . $this->getUri();
+        }
+
+        return $id;
     }
 
     /**
@@ -75,25 +90,6 @@ class HttpRequest implements NormalizableInterface, IdentifiableInterface
     public function setId($id)
     {
         $this->id = $id;
-
-        return $this;
-    }
-
-    /**
-     * @return array
-     */
-    public function getReq(): array
-    {
-        return $this->req;
-    }
-
-    /**
-     * @param array $req
-     * @return HttpRequest
-     */
-    public function setReq(array $req): HttpRequest
-    {
-        $this->req = $req;
 
         return $this;
     }
@@ -110,7 +106,7 @@ class HttpRequest implements NormalizableInterface, IdentifiableInterface
      * @param string|null $uri
      * @return HttpRequest
      */
-    public function setUri(?string $uri): HttpRequest
+    public function setUri(?string $uri): self
     {
         $this->uri = $uri;
 
@@ -134,7 +130,7 @@ class HttpRequest implements NormalizableInterface, IdentifiableInterface
      * @param string|null $method
      * @return HttpRequest
      */
-    public function setMethod(?string $method): HttpRequest
+    public function setMethod(?string $method): self
     {
         $this->method = $method;
 
@@ -153,7 +149,7 @@ class HttpRequest implements NormalizableInterface, IdentifiableInterface
      * @param RequestConfig|null $config
      * @return HttpRequest
      */
-    public function setConfig(?RequestConfig $config): HttpRequest
+    public function setConfig(?RequestConfig $config): self
     {
         $this->config = $config;
 
@@ -172,7 +168,7 @@ class HttpRequest implements NormalizableInterface, IdentifiableInterface
      * @param array|HttpHeader[]|null $headers
      * @return HttpRequest
      */
-    public function setHeaders($headers)
+    public function setHeaders($headers): self
     {
         $this->headers = $headers;
 
@@ -191,7 +187,7 @@ class HttpRequest implements NormalizableInterface, IdentifiableInterface
      * @param array|null $query
      * @return HttpRequest
      */
-    public function setQuery(?array $query): HttpRequest
+    public function setQuery(?array $query): self
     {
         $this->query = $query;
 
@@ -210,9 +206,28 @@ class HttpRequest implements NormalizableInterface, IdentifiableInterface
      * @param mixed $data
      * @return HttpRequest
      */
-    public function setData($data)
+    public function setData($data): self
     {
         $this->data = $data;
+
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getReq(): array
+    {
+        return $this->req;
+    }
+
+    /**
+     * @param array $req
+     * @return HttpRequest
+     */
+    public function setReq(array $req): HttpRequest
+    {
+        $this->req = $req;
 
         return $this;
     }

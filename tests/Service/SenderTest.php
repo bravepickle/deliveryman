@@ -6,8 +6,8 @@ namespace DeliverymanTest\Service;
 use Deliveryman\Channel\HttpGraphChannel;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
-use Deliveryman\Entity\Request;
-use Deliveryman\Entity\HttpHeader;
+use Deliveryman\Entity\HttpGraph\HttpHeader;
+use Deliveryman\Entity\HttpGraph\HttpRequest;
 use Deliveryman\Service\BatchRequestValidator;
 use Deliveryman\Service\ConfigManager;
 use Deliveryman\Service\Sender;
@@ -27,7 +27,6 @@ class SenderTest extends TestCase
      * @param BatchResponse $expected
      * @throws \Deliveryman\Exception\SendingException
      * @throws \Psr\Cache\InvalidArgumentException
-     * @throws \Deliveryman\Exception\SerializationException
      */
     public function testSend(BatchRequest $input, array $responses, BatchResponse $expected)
     {
@@ -53,9 +52,7 @@ class SenderTest extends TestCase
         $reqId = 'test_get';
         $batchRequest = new BatchRequest();
         $batchRequest->setData([
-            [
-                (new Request())->setId($reqId)->setUri('http://example.com'),
-            ],
+            (new HttpRequest())->setId($reqId)->setUri('http://example.com'),
         ]);
 
         $returnedResponses[$reqId] = (new \Deliveryman\Entity\HttpResponse())

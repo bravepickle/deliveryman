@@ -93,7 +93,7 @@ configProvider:
                     id: '#45'
                 -   uri: 'http://example.com/be-something'
                     id: '#46'
-                    method: post
+                    method: POST
                     data: { user: john }
         responses:
             -   statusCode: 200
@@ -137,8 +137,8 @@ configProvider:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
         input:
             data:
-                -   - { uri: 'http://example.com/foo', id: '#45', config: { silent: true } }
-                    - { uri: 'http://example.com/bar', id: '#46' }
+                - { uri: 'http://example.com/foo', id: '#45', config: { silent: true } }
+                - { uri: 'http://example.com/bar', id: '#46', req: ['#45']}
         responses:
             -   statusCode: 200
                 headers:
@@ -178,7 +178,7 @@ configProvider:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
         input:
             data:
-                -   - { uri: 'http://example.com/leslie', id: 'leslie', headers: [{ name: 'X-Auth', value: 'secured_key' }], method: 'HEAD' }
+                -   { uri: 'http://example.com/leslie', id: 'leslie', headers: [{ name: 'X-Auth', value: 'secured_key' }], method: 'HEAD' }
         responses:
             -   statusCode: 401
                 headers:

@@ -30,7 +30,7 @@ Deliveryman\Entity\HttpGraph\ChannelConfig:
             -   All:
                     -   Type: integer
 
-Deliveryman\Entity\HttpHeader:
+Deliveryman\Entity\HttpGraph\HttpHeader:
     properties:
         name:
             - NotBlank: ~

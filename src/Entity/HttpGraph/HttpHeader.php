@@ -1,15 +1,13 @@
 <?php
 
-namespace Deliveryman\Entity;
-
-use Deliveryman\Normalizer\NormalizableInterface;
+namespace Deliveryman\Entity\HttpGraph;
 
 /**
  * Class RequestHeader
  * Contains headers passed within batch request body
  * @package Deliveryman\Entity
  */
-class HttpHeader implements NormalizableInterface
+class HttpHeader
 {
     /**
      * Header name

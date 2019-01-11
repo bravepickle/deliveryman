@@ -9,11 +9,11 @@ use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\HttpGraph\ChannelConfig;
 use Deliveryman\Entity\HttpGraph\HttpRequest;
 use Deliveryman\Entity\RequestConfig;
-use Deliveryman\Entity\HttpHeader;
+use Deliveryman\Entity\HttpGraph\HttpHeader;
 use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Entity\ResponseItemInterface;
 use Deliveryman\EventListener\BuildResponseEvent;
-use Deliveryman\Exception\ChannelException;
+use Deliveryman\Exception\HttpGraphChannelException;
 use Deliveryman\Exception\LogicException;
 use Deliveryman\Exception\SendingException;
 use Deliveryman\Service\ConfigManager;
@@ -163,7 +163,7 @@ class HttpGraphChannel extends AbstractChannel
 
         // TODO: validate that input data is array
         if (!$this->batchRequest->getData()) {
-            throw new ChannelException(self::MSG_UNDEFINED_REQUESTS);
+            throw new HttpGraphChannelException(self::MSG_UNDEFINED_REQUESTS);
         }
 
         $this->mergeRequestConfigs();
@@ -364,7 +364,7 @@ class HttpGraphChannel extends AbstractChannel
                         break;
 
                     case RequestConfig::CFG_ON_FAIL_ABORT:
-                        throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
+                        throw (new HttpGraphChannelException(HttpGraphChannelException::MSG_QUEUE_TERMINATED))
                             ->setRequest($request);
 
                     case RequestConfig::CFG_ON_FAIL_ABORT_QUEUE:
@@ -373,7 +373,7 @@ class HttpGraphChannel extends AbstractChannel
                     default:
                         throw new SendingException('Unexpected fail handler type: ' . $onFail);
                 }
-            } else {
+            } elseif (!$request->getConfig()->getSilent()) {
                 $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));
             }
 
@@ -448,7 +448,7 @@ class HttpGraphChannel extends AbstractChannel
                     break;
 
                 case RequestConfig::CFG_ON_FAIL_ABORT:
-                    throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
+                    throw (new HttpGraphChannelException(HttpGraphChannelException::MSG_QUEUE_TERMINATED, null, $e))
                         ->setRequest($request);
 
                 case RequestConfig::CFG_ON_FAIL_ABORT_QUEUE:
@@ -474,14 +474,16 @@ class HttpGraphChannel extends AbstractChannel
                 if (in_array($request->getConfig()->getOnFail(), [
                     RequestConfig::CFG_ON_FAIL_ABORT,
                 ])) {
-                    throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED))
+                    throw (new HttpGraphChannelException(HttpGraphChannelException::MSG_QUEUE_TERMINATED))
                         ->setRequest($request);
                 }
 
                 return;
             }
 
-            $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));
+            if (!$request->getConfig()->getSilent()) {
+                $this->addOkResponse($request->getId(), $this->buildResponseData($request, $response));
+            }
         };
     }
 
@@ -500,7 +502,7 @@ class HttpGraphChannel extends AbstractChannel
             switch ($request->getConfig()->getOnFail()) {
                 case RequestConfig::CFG_ON_FAIL_ABORT:
                 case RequestConfig::CFG_ON_FAIL_ABORT_QUEUE:
-                    throw (new ChannelException(ChannelException::MSG_QUEUE_TERMINATED, null, $e))
+                    throw (new HttpGraphChannelException(HttpGraphChannelException::MSG_QUEUE_TERMINATED, null, $e))
                         ->setRequest($request);
                     break;
 

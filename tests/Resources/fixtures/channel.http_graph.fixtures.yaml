@@ -307,7 +307,6 @@ sendProvider:
             channels:
                 http_graph:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
-            silent: true
             on_fail: abort-queue
         input:
             data:

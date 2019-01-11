@@ -70,6 +70,7 @@ class IntegrationTest extends TestCase
      * @param array $config
      * @param HttpRequest|null $masterRequest
      * @return Sender
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function initSender(array $config, ?HttpRequest $masterRequest = null): Sender
     {
@@ -129,14 +130,11 @@ class IntegrationTest extends TestCase
         $this->assertTrue($serializer->supportsDenormalization($input, BatchRequest::class));
 
         /** @var BatchRequest $batchRequest */
-        $batchRequest = $serializer->denormalize($input, BatchRequest::class);
+        $batchRequest = $serializer->denormalize($input, BatchRequest::class, null, ['channel' => 'http_graph']);
         $batchResponse = $sender->send($batchRequest);
 
-        $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json'));
-        $actual = $serializer->normalize($batchResponse);
-
-        print_r($output);
-        print_r($actual);
+        $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json', ['channel' => 'http_graph']));
+        $actual = $serializer->normalize($batchResponse, null, ['channel' => 'http_graph']);
 
         $this->assertEquals($output, $actual);
     }
@@ -183,11 +181,11 @@ class IntegrationTest extends TestCase
         $this->assertTrue($serializer->supportsDenormalization($input, BatchRequest::class));
 
         /** @var BatchRequest $batchRequest */
-        $batchRequest = $serializer->denormalize($input, BatchRequest::class);
+        $batchRequest = $serializer->denormalize($input, BatchRequest::class, null, ['channel' => 'http_graph']);
         $batchResponse = $sender->send($batchRequest);
 
-        $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json'));
-        $actual = $serializer->normalize($batchResponse);
+        $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json', ['channel' => 'http_graph']));
+        $actual = $serializer->normalize($batchResponse, null, ['channel' => 'http_graph']);
 
         $this->assertEquals($output, $actual);
     }

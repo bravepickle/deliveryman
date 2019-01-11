@@ -9,7 +9,7 @@ namespace DeliverymanTest\Channel;
 use Deliveryman\Channel\HttpGraphChannel;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\HttpGraph\HttpRequest;
-use Deliveryman\Entity\HttpHeader;
+use Deliveryman\Entity\HttpGraph\HttpHeader;
 use Deliveryman\Entity\HttpGraph\ChannelConfig;
 use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Entity\RequestConfig;

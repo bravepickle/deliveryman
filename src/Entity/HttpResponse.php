@@ -2,6 +2,7 @@
 
 namespace Deliveryman\Entity;
 
+use Deliveryman\Entity\HttpGraph\HttpHeader;
 use Deliveryman\Normalizer\NormalizableInterface;
 
 class HttpResponse implements NormalizableInterface, ResponseItemInterface

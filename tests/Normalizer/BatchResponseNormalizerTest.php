@@ -4,7 +4,7 @@ namespace DeliverymanTest\Normalizer;
 
 
 use Deliveryman\Entity\BatchResponse;
-use Deliveryman\Entity\HttpHeader;
+use Deliveryman\Entity\HttpGraph\HttpHeader;
 use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Normalizer\BatchRequestNormalizer;
 use PHPUnit\Framework\TestCase;
@@ -36,9 +36,9 @@ class BatchResponseNormalizerTest extends TestCase
     public function testNorm($input, $expected)
     {
         $serializer = $this->buildSerializer();
-        $this->assertTrue($serializer->supportsNormalization($input, BatchResponse::class));
+        $this->assertTrue($serializer->supportsNormalization($input, null, ['channel' => 'http_graph']));
 
-        $actual = $serializer->normalize($input);
+        $actual = $serializer->normalize($input, null, ['channel' => 'http_graph']);
         $this->assertEquals($expected, $actual, 'Data normalization differs from expected');
     }
 
