@@ -9,27 +9,21 @@ namespace Deliveryman\Channel;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\ResponseItemInterface;
 use Deliveryman\Exception\ChannelException;
+use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\Transport\TransportInterface;
 
 /**
  * Interface ChannelInterface
  * Defines actions required to handle requests
  * @package Deliveryman\Channel
  */
-interface ChannelInterface
+interface ChannelInterface extends TransportInterface
 {
     /**
      * Get client provider's name that is used within configuration. Must be unique
      * @return mixed
      */
     public function getName(): string;
-
-    /**
-     * Send all data.
-     * Should be optimized for the best performance gains
-     * @param BatchRequest $batchRequest
-     * @throws ChannelException
-     */
-    public function send(BatchRequest $batchRequest);
 
     /**
      * Return all errors that appeared during last session of sending data

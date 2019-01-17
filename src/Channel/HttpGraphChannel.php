@@ -23,11 +23,14 @@ use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\RequestOptions;
 use GuzzleHttp\Promise;
+use http\Exception\InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Serializer\Encoder\JsonDecode;
 use Symfony\Component\Serializer\Exception\NotEncodableValueException;
+use Symfony\Component\Serializer\SerializerInterface;
 
 /**
  * Class HttpGraphChannel
@@ -94,19 +97,27 @@ class HttpGraphChannel extends AbstractChannel
     protected $mergeStrategy;
 
     /**
+     * @var SerializerInterface
+     */
+    protected $serializer;
+
+    /**
      * Sender constructor.
      * @param ConfigManager $configManager
+     * @param SerializerInterface $serializer
      * @param RequestStack|null $requestStack
      * @param EventDispatcherInterface|null $dispatcher
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function __construct(
         ConfigManager $configManager,
+        SerializerInterface $serializer,
         ?RequestStack $requestStack = null,
         ?EventDispatcherInterface $dispatcher = null
     )
     {
         $this->configManager = $configManager;
+        $this->serializer = $serializer;
         $this->requestStack = $requestStack;
         $this->dispatcher = $dispatcher;
         $this->treeBuilder = new GraphTreeBuilder();
@@ -156,10 +167,16 @@ class HttpGraphChannel extends AbstractChannel
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Deliveryman\Exception\LogicException
      * @throws \Deliveryman\Exception\InvalidArgumentException
+     * @throws HttpGraphChannelException
      */
-    public function send(BatchRequest $batchRequest)
+    public function send(Envelope $envelope): Envelope
     {
-        $this->batchRequest = $batchRequest;
+        if (!$envelope->getMessage() instanceof BatchRequest) {
+            throw new InvalidArgumentException('Cannot handle message of class: ' .
+                get_class($envelope->getMessage()));
+        }
+
+        $this->batchRequest = $envelope->getMessage();
 
         // TODO: validate that input data is array
         if (!$this->batchRequest->getData()) {
@@ -173,7 +190,7 @@ class HttpGraphChannel extends AbstractChannel
             $request = reset($requests);
             $this->sendRequest($request);
 
-            return;
+            return $envelope;
         }
 
         $this->nodesCollection = new GraphNodeCollection(
@@ -183,10 +200,12 @@ class HttpGraphChannel extends AbstractChannel
         if ($this->hasSingleArrow()) {
             $this->sendSingleArrow();
 
-            return;
+            return $envelope;
         }
 
         $this->sendMultiArrows();
+
+        return $envelope;
     }
 
     /**
@@ -723,4 +742,26 @@ class HttpGraphChannel extends AbstractChannel
         $this->mergeStrategy = new MergeRequestConfigStrategy($defaults);
     }
 
+    /**
+     * @inheritdoc
+     */
+    public function receive(callable $handler): void
+    {
+        $ordersFromCsv = $this->serializer->deserialize(file_get_contents($this->filePath), 'csv');
+
+        foreach ($ordersFromCsv as $orderFromCsv) {
+            $order = new NewOrder($orderFromCsv['id'], $orderFromCsv['account_id'], $orderFromCsv['amount']);
+
+            $handler(new Envelope($order));
+        }
+    }
+
+    /**
+     * @inheritdoc
+     * @throws LogicException
+     */
+    public function stop(): void
+    {
+        throw new LogicException('This feature is not supported.');
+    }
 }

@@ -8,6 +8,7 @@
     "require": {
         "php": ">=7.1",
         "ext-json": "*",
+        "ext-http": "*",
         "symfony/serializer": "^4.1",
         "symfony/event-dispatcher": "^4.1",
         "symfony/http-foundation": "^4.1",
