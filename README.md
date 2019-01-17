@@ -99,6 +99,7 @@ The following steps should be taken to make agent working properly:
 ## Usage Examples
 
 ## TODO
+- [ ] Reformat project to use symfony/messenger component
 - [ ] Swagger config documentation.
 - [ ] Remove http_queue channel. Use http_graph instead. Cleanup tests and docs
 - [ ] Remove symfony/http-foundation from dependencies if guzzlehttp/psr7 is feasible enough.
