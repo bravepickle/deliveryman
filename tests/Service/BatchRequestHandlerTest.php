@@ -10,14 +10,14 @@ use Deliveryman\Entity\HttpGraph\HttpHeader;
 use Deliveryman\Entity\HttpGraph\HttpRequest;
 use Deliveryman\Service\BatchRequestValidator;
 use Deliveryman\Service\ConfigManager;
-use Deliveryman\Service\Sender;
+use Deliveryman\Service\BatchRequestHandler;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use function GuzzleHttp\Psr7\stream_for;
 use PHPUnit\Framework\TestCase;
 
-class SenderTest extends TestCase
+class BatchRequestHandlerTest extends TestCase
 {
     /**
      * Sending batch requests
@@ -38,7 +38,7 @@ class SenderTest extends TestCase
 
         $provider = new HttpGraphChannel($configManager);
 
-        $sender = new Sender($provider, $configManager, new BatchRequestValidator($configManager));
+        $sender = new BatchRequestHandler($provider, $configManager, new BatchRequestValidator($configManager));
         $actual = $sender->send($input);
 
         $this->assertEquals($expected, $actual);

@@ -6,18 +6,15 @@
 
 namespace Deliveryman\Channel;
 
-use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\ResponseItemInterface;
-use Deliveryman\Exception\ChannelException;
-use Symfony\Component\Messenger\Envelope;
-use Symfony\Component\Messenger\Transport\TransportInterface;
+use Symfony\Component\Messenger\Transport\Sender\SenderInterface;
 
 /**
  * Interface ChannelInterface
  * Defines actions required to handle requests
  * @package Deliveryman\Channel
  */
-interface ChannelInterface extends TransportInterface
+interface ChannelInterface extends SenderInterface
 {
     /**
      * Get client provider's name that is used within configuration. Must be unique

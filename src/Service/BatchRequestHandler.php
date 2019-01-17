@@ -12,11 +12,11 @@ use Deliveryman\Exception\ChannelException;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
- * Class Sender
+ * Class BatchRequestHandler
  * Is a facade for sending parsed batch request
  * @package Deliveryman\Service
  */
-class Sender implements SenderInterface
+class BatchRequestHandler implements BatchRequestHandlerInterface
 {
     /**
      * @var ChannelInterface
@@ -39,7 +39,7 @@ class Sender implements SenderInterface
     protected $validator;
 
     /**
-     * Sender constructor.
+     * BatchRequestHandler constructor.
      * @param ChannelInterface $channel
      * @param ConfigManager $configManager
      * @param BatchRequestValidator $batchRequestValidator
@@ -61,7 +61,7 @@ class Sender implements SenderInterface
     /**
      * @inheritdoc
      */
-    public function send(BatchRequest $batchRequest): BatchResponse
+    public function __invoke(BatchRequest $batchRequest): BatchResponse
     {
         $this->channel->clear();
         $channel = $this->channel;

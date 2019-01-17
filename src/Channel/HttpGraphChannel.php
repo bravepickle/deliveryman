@@ -97,27 +97,19 @@ class HttpGraphChannel extends AbstractChannel
     protected $mergeStrategy;
 
     /**
-     * @var SerializerInterface
-     */
-    protected $serializer;
-
-    /**
-     * Sender constructor.
+     * BatchRequestHandler constructor.
      * @param ConfigManager $configManager
-     * @param SerializerInterface $serializer
      * @param RequestStack|null $requestStack
      * @param EventDispatcherInterface|null $dispatcher
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function __construct(
         ConfigManager $configManager,
-        SerializerInterface $serializer,
         ?RequestStack $requestStack = null,
         ?EventDispatcherInterface $dispatcher = null
     )
     {
         $this->configManager = $configManager;
-        $this->serializer = $serializer;
         $this->requestStack = $requestStack;
         $this->dispatcher = $dispatcher;
         $this->treeBuilder = new GraphTreeBuilder();
@@ -742,26 +734,4 @@ class HttpGraphChannel extends AbstractChannel
         $this->mergeStrategy = new MergeRequestConfigStrategy($defaults);
     }
 
-    /**
-     * @inheritdoc
-     */
-    public function receive(callable $handler): void
-    {
-        $ordersFromCsv = $this->serializer->deserialize(file_get_contents($this->filePath), 'csv');
-
-        foreach ($ordersFromCsv as $orderFromCsv) {
-            $order = new NewOrder($orderFromCsv['id'], $orderFromCsv['account_id'], $orderFromCsv['amount']);
-
-            $handler(new Envelope($order));
-        }
-    }
-
-    /**
-     * @inheritdoc
-     * @throws LogicException
-     */
-    public function stop(): void
-    {
-        throw new LogicException('This feature is not supported.');
-    }
 }
