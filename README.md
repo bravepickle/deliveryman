@@ -99,7 +99,8 @@ The following steps should be taken to make agent working properly:
 ## Usage Examples
 
 ## TODO
-- [x] Swagger config documentation.
+- [ ] Swagger config documentation.
+- [ ] Remove http_queue channel. Use http_graph instead. Cleanup tests and docs
 - [ ] Remove symfony/http-foundation from dependencies if guzzlehttp/psr7 is feasible enough.
 - [ ] Authorization: optional, configurable. Provide only with interface and some simple provider - check hardcoded API keys
 - [ ] Update usage of Exception classes within library. Must be properly defined
@@ -118,6 +119,8 @@ The following steps should be taken to make agent working properly:
 - [ ] Only defined in *requestHeadersRules*
 - [ ] Why not use JS frontend library instead? When is it better this way?
 - [ ] Support binary, form data format
+- [ ] Pass instead of ConfigManager config array directly
+- [ ] Add extendable rules for verification data 
 - [ ] Split error texts from failed responses. Errors field will contain text messages, failed - failed responses
 - [ ] Solve problem of how to pass headers in responses back if needed to be added to batch response, e.g. cookies 
 - [ ] Optimize handling queues: single queue - run normally; multiple queues but single request per each - run in parallel;

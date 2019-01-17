@@ -6,7 +6,7 @@
 
 namespace DeliverymanTest\Integration;
 
-use Deliveryman\Channel\HttpChannel;
+use Deliveryman\Channel\HttpGraphChannel;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Normalizer\BatchRequestNormalizer;
 use Deliveryman\Service\BatchRequestValidator;
@@ -70,6 +70,7 @@ class IntegrationTest extends TestCase
      * @param array $config
      * @param HttpRequest|null $masterRequest
      * @return Sender
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function initSender(array $config, ?HttpRequest $masterRequest = null): Sender
     {
@@ -84,7 +85,7 @@ class IntegrationTest extends TestCase
         }
 
         return new Sender(
-            new HttpChannel($configManager, $requestStack),
+            new HttpGraphChannel($configManager, $requestStack),
             $configManager,
             new BatchRequestValidator($configManager)
         );
@@ -110,7 +111,7 @@ class IntegrationTest extends TestCase
         array $output
     ) {
         $mockHandler = new MockHandler($responses);
-        $config['channels']['http']['request_options']['handler'] = HandlerStack::create(function (
+        $config['channels']['http_graph']['request_options']['handler'] = HandlerStack::create(function (
             RequestInterface $request,
             array $options
         ) use ($mockHandler, &$expectedRequests) {
@@ -129,11 +130,11 @@ class IntegrationTest extends TestCase
         $this->assertTrue($serializer->supportsDenormalization($input, BatchRequest::class));
 
         /** @var BatchRequest $batchRequest */
-        $batchRequest = $serializer->denormalize($input, BatchRequest::class);
+        $batchRequest = $serializer->denormalize($input, BatchRequest::class, null, ['channel' => 'http_graph']);
         $batchResponse = $sender->send($batchRequest);
 
-        $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json'));
-        $actual = $serializer->normalize($batchResponse);
+        $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json', ['channel' => 'http_graph']));
+        $actual = $serializer->normalize($batchResponse, null, ['channel' => 'http_graph']);
 
         $this->assertEquals($output, $actual);
     }
@@ -160,7 +161,7 @@ class IntegrationTest extends TestCase
         $masterRequest->headers->add($input['headers']);
 
         $mockHandler = new MockHandler($responses);
-        $config['channels']['http']['request_options']['handler'] = HandlerStack::create(function (
+        $config['channels']['http_graph']['request_options']['handler'] = HandlerStack::create(function (
             RequestInterface $request,
             array $options
         ) use ($mockHandler, &$expectedRequests) {
@@ -180,11 +181,11 @@ class IntegrationTest extends TestCase
         $this->assertTrue($serializer->supportsDenormalization($input, BatchRequest::class));
 
         /** @var BatchRequest $batchRequest */
-        $batchRequest = $serializer->denormalize($input, BatchRequest::class);
+        $batchRequest = $serializer->denormalize($input, BatchRequest::class, null, ['channel' => 'http_graph']);
         $batchResponse = $sender->send($batchRequest);
 
-        $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json'));
-        $actual = $serializer->normalize($batchResponse);
+        $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json', ['channel' => 'http_graph']));
+        $actual = $serializer->normalize($batchResponse, null, ['channel' => 'http_graph']);
 
         $this->assertEquals($output, $actual);
     }

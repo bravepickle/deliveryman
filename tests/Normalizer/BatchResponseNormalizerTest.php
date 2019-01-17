@@ -4,8 +4,8 @@ namespace DeliverymanTest\Normalizer;
 
 
 use Deliveryman\Entity\BatchResponse;
-use Deliveryman\Entity\RequestHeader;
-use Deliveryman\Entity\Response;
+use Deliveryman\Entity\HttpGraph\HttpHeader;
+use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Normalizer\BatchRequestNormalizer;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
@@ -36,9 +36,9 @@ class BatchResponseNormalizerTest extends TestCase
     public function testNorm($input, $expected)
     {
         $serializer = $this->buildSerializer();
-        $this->assertTrue($serializer->supportsNormalization($input, BatchResponse::class));
+        $this->assertTrue($serializer->supportsNormalization($input, null, ['channel' => 'http_graph']));
 
-        $actual = $serializer->normalize($input);
+        $actual = $serializer->normalize($input, null, ['channel' => 'http_graph']);
         $this->assertEquals($expected, $actual, 'Data normalization differs from expected');
     }
 
@@ -47,25 +47,25 @@ class BatchResponseNormalizerTest extends TestCase
      */
     public function normProvider()
     {
-        $responseOk = (new Response())
+        $responseOk = (new HttpResponse())
             ->setData(
                 ['id' => 46, 'name' => 'John Doe']
             )
             ->setId('read_author')
             ->setHeaders([
-                (new RequestHeader())
+                (new HttpHeader())
                     ->setName('Content-Type')
                     ->setValue('application/json'),
             ])
             ->setStatusCode(200);
 
-        $responseErr = (new Response())
+        $responseErr = (new HttpResponse())
             ->setData(
                 'The data is invalid'
             )
             ->setId('create_book')
             ->setHeaders([
-                (new RequestHeader())
+                (new HttpHeader())
                     ->setName('Content-Type')
                     ->setValue('plain/text'),
             ])

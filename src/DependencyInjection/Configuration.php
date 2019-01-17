@@ -4,11 +4,12 @@
  * Time: 00:02
  */
 
-namespace Deliveryman\Config;
+namespace Deliveryman\DependencyInjection;
 
 
-use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
+use Deliveryman\Channel\HttpGraphChannel;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
+use Symfony\Component\Config\Definition\Builder\NodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
@@ -16,38 +17,30 @@ class Configuration implements ConfigurationInterface
 {
     /**
      * Name of configuration settings provided for given library
+     * @var string
      */
-    const CONFIG_NAME = 'deliveryman';
+    protected $name = 'deliveryman';
+
+    /**
+     * @param string $name
+     */
+    public function setName(string $name): void
+    {
+        $this->name = $name;
+    }
 
     /**
      * @inheritdoc
      */
     public function getConfigTreeBuilder()
     {
-        $treeBuilder = new TreeBuilder(self::CONFIG_NAME);
+        $treeBuilder = new TreeBuilder($this->name);
 
-        /** @var ArrayNodeDefinition $rootNode */
-        $rootNode = $treeBuilder->root(self::CONFIG_NAME);
-
-        $nodeBuilder = $rootNode->children();
-
-        $this->addDomainsBranch($nodeBuilder);
-        $this->addChannelsBranch($nodeBuilder);
-        $this->addBatchFormatLeaf($nodeBuilder);
-        $this->addResourceFormatLeaf($nodeBuilder);
-        $this->addOnFailLeaf($nodeBuilder);
-        $this->addConfigMergeLeaf($nodeBuilder);
-        $this->addExpStatCodesLeaf($nodeBuilder);
-        $this->addMethodsLeaf($nodeBuilder);
-        $this->addSilentLeaf($nodeBuilder);
-        $this->addForwardedHeadersLeaf($nodeBuilder);
-
-        $nodeBuilder->end();
+        $this->buildNodesTree($treeBuilder);
 
         // TODO: move to channel config and add validator for those values to be used properly
         // TODO: move channel-related configs inside channel instance description
         // TODO: we need to specify input and output formats for third party resources. Input should support form-data
-        // TODO: move to channel
 
         return $treeBuilder;
     }
@@ -57,14 +50,17 @@ class Configuration implements ConfigurationInterface
      */
     protected function addChannelsBranch(NodeBuilder $rootNode): void
     {
-        $defaultValues = [
-            'http' => [
+        $defaultValues = [ // TODO: update defaults after all options will be reconfigured, add missing
+            'http_graph' => [
                 'request_options' => [
                     'allow_redirects' => false,
                     'connect_timeout' => 10,
                     'timeout' => 30,
                     'debug' => false,
                 ],
+                'sender_headers' => [],
+                'receiver_headers' => [],
+                'expected_status_codes' => [200, 201, 202, 204],
             ],
         ];
 
@@ -75,29 +71,40 @@ class Configuration implements ConfigurationInterface
             ->treatTrueLike($defaultValues)
             ->treatNullLike($defaultValues)
             ->children()
-                ->arrayNode('http')
+                ->arrayNode('http_graph')
+                    ->info('HTTP requests that have dependencies similar to directed tree graph format')
                     ->addDefaultsIfNotSet()
                     ->children()
                         ->arrayNode('request_options')
                             ->isRequired()
                             ->info('Request options for Guzzle client library')
-                            ->defaultValue($defaultValues['http']['request_options'])
+                            ->defaultValue($defaultValues['http_graph']['request_options'])
                             ->variablePrototype()->end()
                         ->end()
                         ->arrayNode('sender_headers')
                             ->info('Pass initial request headers from sender to receiver. ' .
                                 'If set to NULL or FALSE then no headers will be forwarded.')
+                            ->beforeNormalization()->castToArray()->end()
                             ->defaultValue([])
                             ->treatNullLike([])
                             ->example(['Origin', 'Cookie', 'Authorization'])
                             ->scalarPrototype()->cannotBeEmpty()->end()
                         ->end()
                         ->arrayNode('receiver_headers')
+                            ->beforeNormalization()->castToArray()->end()
                             ->info('Pass response headers from receiver to sender. If set to TRUE then ' .
                                 'all receiver headers will be displayed to sender inside batch response body')
                             ->defaultValue([])
                             ->example(['Set-Cookie'])
                             ->scalarPrototype()->cannotBeEmpty()->end()
+                        ->end()
+                        ->arrayNode('expected_status_codes')
+                            ->info('List of all status codes that are considered OK, if returned. ' .
+                                'If any other status codes received by requests, then request is considered as failed.')
+                            ->example([200, 422, 400])
+                            ->defaultValue($defaultValues['http_graph']['expected_status_codes'])
+                            ->requiresAtLeastOneElement()
+                            ->scalarPrototype()->end()
                         ->end()
                     ->end()
                 ->end()
@@ -200,35 +207,6 @@ class Configuration implements ConfigurationInterface
     /**
      * @param NodeBuilder $nodeBuilder
      */
-    protected function addExpStatCodesLeaf(NodeBuilder $nodeBuilder): void
-    {
-        $nodeBuilder->arrayNode('expected_status_codes')
-            ->info('List of all status codes that are considered OK, if returned. ' .
-                'If any other status codes received by requests, then request is considered as failed.')
-            ->example([200, 422, 400])
-            ->defaultValue([200, 201, 202, 204])
-            ->requiresAtLeastOneElement()
-            ->scalarPrototype()->end()
-        ->end();
-    }
-
-    /**
-     * @param NodeBuilder $nodeBuilder
-     */
-    protected function addMethodsLeaf(NodeBuilder $nodeBuilder): void
-    {
-        $nodeBuilder->arrayNode('methods')
-            ->info('Allowed methods for requests to send.')
-            ->example(['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'])
-            ->defaultValue(['GET', 'POST'])
-            ->requiresAtLeastOneElement()
-            ->scalarPrototype()->end()
-        ->end();
-    }
-
-    /**
-     * @param NodeBuilder $nodeBuilder
-     */
     protected function addSilentLeaf(NodeBuilder $nodeBuilder): void
     {
         $nodeBuilder->booleanNode('silent')
@@ -239,14 +217,28 @@ class Configuration implements ConfigurationInterface
     }
 
     /**
-     * @param NodeBuilder $nodeBuilder
+     * @param TreeBuilder $treeBuilder
+     * @return NodeDefinition
      */
-    protected function addForwardedHeadersLeaf(NodeBuilder $nodeBuilder): void
+    public function buildNodesTree(TreeBuilder $treeBuilder): NodeDefinition
     {
-        $nodeBuilder->booleanNode('forward_master_headers')
-            ->info('Pass all initial headers sent from client to batched requests. Headers are merged with ' .
-                'the rest specified bin batch request body.')
-            ->defaultValue(true)
-        ->end();
+        if (method_exists($treeBuilder, 'getRootNode')) {
+            $rootNode = $treeBuilder->getRootNode();
+        } else {
+            // is workaround to support symfony/config 4.1 and older
+            $rootNode = $treeBuilder->root($this->name);
+        }
+
+        $nodeBuilder = $rootNode->addDefaultsIfNotSet()->children();
+
+        $this->addDomainsBranch($nodeBuilder);
+        $this->addChannelsBranch($nodeBuilder);
+        $this->addBatchFormatLeaf($nodeBuilder);
+        $this->addResourceFormatLeaf($nodeBuilder);
+        $this->addOnFailLeaf($nodeBuilder);
+        $this->addConfigMergeLeaf($nodeBuilder);
+        $this->addSilentLeaf($nodeBuilder);
+
+        return $nodeBuilder->end();
     }
 }

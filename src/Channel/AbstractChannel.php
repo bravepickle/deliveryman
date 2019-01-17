@@ -3,22 +3,24 @@
 namespace Deliveryman\Channel;
 
 
-use Psr\Http\Message\ResponseInterface;
+use Deliveryman\Entity\ResponseItemInterface;
 
 abstract class AbstractChannel implements ChannelInterface
 {
+    const NAME = null; // must be redefined in subclasses
+
     /**
      * @var array
      */
     protected $errors = [];
 
     /**
-     * @var array|ResponseInterface[]
+     * @var array|ResponseItemInterface[]
      */
     protected $failedResponses = [];
 
     /**
-     * @var array|ResponseInterface[]
+     * @var array|ResponseItemInterface[]
      */
     protected $okResponses = [];
 
@@ -68,7 +70,7 @@ abstract class AbstractChannel implements ChannelInterface
     }
 
     /**
-     * @return array|ResponseInterface[]
+     * @return array|ResponseItemInterface[]
      */
     public function getFailedResponses(): array
     {
@@ -78,10 +80,10 @@ abstract class AbstractChannel implements ChannelInterface
     /**
      * Add failed response
      * @param $path
-     * @param ResponseInterface $response
+     * @param ResponseItemInterface $response
      * @return $this
      */
-    public function addFailedResponse($path, ResponseInterface $response)
+    public function addFailedResponse($path, ResponseItemInterface $response)
     {
         $this->failedResponses[$path] = $response;
 
@@ -91,10 +93,10 @@ abstract class AbstractChannel implements ChannelInterface
     /**
      * Add succeeded response
      * @param $path
-     * @param ResponseInterface $response
+     * @param ResponseItemInterface $response
      * @return $this
      */
-    public function addOkResponse($path, ResponseInterface $response)
+    public function addOkResponse($path, ResponseItemInterface $response)
     {
         $this->okResponses[$path] = $response;
 
@@ -110,7 +112,7 @@ abstract class AbstractChannel implements ChannelInterface
     }
 
     /**
-     * @return array|ResponseInterface[]
+     * @return array|ResponseItemInterface[]
      */
     public function getOkResponses(): array
     {
@@ -134,5 +136,11 @@ abstract class AbstractChannel implements ChannelInterface
         $this->clearOkResponses();
     }
 
-
+    /**
+     * @return string
+     */
+    public function getName(): string
+    {
+        return static::NAME;
+    }
 }

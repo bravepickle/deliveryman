@@ -3,11 +3,11 @@
 namespace DeliverymanTest\Service;
 
 
-use Deliveryman\Channel\HttpChannel;
+use Deliveryman\Channel\HttpGraphChannel;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
-use Deliveryman\Entity\Request;
-use Deliveryman\Entity\RequestHeader;
+use Deliveryman\Entity\HttpGraph\HttpHeader;
+use Deliveryman\Entity\HttpGraph\HttpRequest;
 use Deliveryman\Service\BatchRequestValidator;
 use Deliveryman\Service\ConfigManager;
 use Deliveryman\Service\Sender;
@@ -27,17 +27,16 @@ class SenderTest extends TestCase
      * @param BatchResponse $expected
      * @throws \Deliveryman\Exception\SendingException
      * @throws \Psr\Cache\InvalidArgumentException
-     * @throws \Deliveryman\Exception\SerializationException
      */
     public function testSend(BatchRequest $input, array $responses, BatchResponse $expected)
     {
         $config = ['domains' => ['example.com', 'http://foo.com']];
-        $config['channels']['http']['request_options']['handler'] = HandlerStack::create(new MockHandler($responses));
+        $config['channels']['http_graph']['request_options']['handler'] = HandlerStack::create(new MockHandler($responses));
 
         $configManager = new ConfigManager();
         $configManager->addConfiguration($config);
 
-        $provider = new HttpChannel($configManager);
+        $provider = new HttpGraphChannel($configManager);
 
         $sender = new Sender($provider, $configManager, new BatchRequestValidator($configManager));
         $actual = $sender->send($input);
@@ -52,15 +51,13 @@ class SenderTest extends TestCase
     {
         $reqId = 'test_get';
         $batchRequest = new BatchRequest();
-        $batchRequest->setQueues([
-            [
-                (new Request())->setId($reqId)->setUri('http://example.com'),
-            ],
+        $batchRequest->setData([
+            (new HttpRequest())->setId($reqId)->setUri('http://example.com'),
         ]);
 
-        $returnedResponses[$reqId] = (new \Deliveryman\Entity\Response())
+        $returnedResponses[$reqId] = (new \Deliveryman\Entity\HttpResponse())
             ->setId($reqId)
-            ->setHeaders([new RequestHeader('Content-Type', 'application/json')])
+            ->setHeaders([new HttpHeader('Content-Type', 'application/json')])
             ->setStatusCode(200)
             ->setData(['server' => 'success!'])
         ;

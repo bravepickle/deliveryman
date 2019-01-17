@@ -1,0 +1,638 @@
+sendProvider:
+    -   # check single request in batch
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+
+        input:
+            data:
+                - { uri: 'http://example.com/foo', id: ask-foo }
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                data: '{"id":1}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                data: ''
+
+        output:
+            ok:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: Content-Type, value: application/json }]
+                    statusCode: 200
+                    data: { id: 1 }
+            failed: []
+            errors: []
+
+    -   # test failing response with single request
+        config:
+            on_fail: proceed
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+                    expected_status_codes: [200]
+
+        input:
+            data:
+                - { uri: 'http://example.com/foo', id: ask-foo }
+
+        responses:
+            -   statusCode: 404
+                headers:
+                    Content-Type: [application/json]
+                data: '{"error":"Not Found"}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                data: ''
+
+        output:
+            ok: []
+            failed:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: Content-Type, value: application/json }]
+                    statusCode: 404
+                    data: { error: "Not Found" }
+            errors:
+                ask-foo: 'Request failed to complete.'
+
+    -   # test 2 requests with additional headers for responses and requests and references
+        config:
+            domains:
+                - 'http://dev.example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+                    expected_status_codes: [200, 201]
+                    receiver_headers: [Set-Cookie, Location, Content-Type]
+
+        input:
+            data:
+                - { uri: 'http://dev.example.com/users/2', id: read_user, req: [add_user] }
+                -   uri: 'http://dev.example.com/users/create'
+                    id: add_user
+                    headers: [{name: X-Auth, value: 'api-key'}]
+                    method: POST
+                    data: { name: Jacky }
+
+        responses:
+            -   statusCode: 201
+                headers: { Location: ['http://dev.example.com/users/32'] }
+                data: ''
+
+            -   statusCode: 200
+                headers: { Set-Cookie: ['_UID=abc'] }
+                data: '{"id": "Johnny"}'
+
+        sentRequests:
+            -   method: POST
+                uri: 'http://dev.example.com/users/create'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [dev.example.com]
+                    X-Auth: [api-key]
+                    Content-Length: [16]
+                    Content-Type: [application/json]
+                data: '{"name":"Jacky"}'
+
+            -   method: GET
+                uri: 'http://dev.example.com/users/2'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [dev.example.com]
+
+        output:
+            failed: []
+            ok:
+                add_user:
+                    id: add_user
+                    headers:
+                        - { name: Location, value: 'http://dev.example.com/users/32' }
+                    statusCode: 201
+                    data: ''
+
+                read_user:
+                    id: read_user
+                    headers:
+                        - { name: Set-Cookie, value: '_UID=abc' }
+                    statusCode: 200
+                    data: { id: "Johnny" }
+            errors: []
+
+    -   # test multiple arrows graph
+        config:
+            domains:
+                - 'http://dev.example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+
+        input:
+            data:
+                - { uri: 'http://dev.example.com/users/1', id: user1, req: [user2] }
+                - { uri: 'http://dev.example.com/users/2', id: user2 }
+                - { uri: 'http://dev.example.com/users/3', id: user3 }
+
+        responses:
+            -   statusCode: 200
+                data: 'user2-data'
+
+            -   statusCode: 200
+                data: 'user3-data'
+
+            -   statusCode: 200
+                data: 'user1-data'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://dev.example.com/users/2'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [dev.example.com]
+
+            -   method: GET
+                uri: 'http://dev.example.com/users/3'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [dev.example.com]
+
+            -   method: GET
+                uri: 'http://dev.example.com/users/1'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [dev.example.com]
+
+        output:
+            failed: []
+            ok:
+                user2:
+                    id: user2
+                    headers: []
+                    statusCode: 200
+                    data: 'user2-data'
+
+                user3:
+                    id: user3
+                    headers: []
+                    statusCode: 200
+                    data: 'user3-data'
+
+                user1:
+                    id: user1
+                    headers: []
+                    statusCode: 200
+                    data: 'user1-data'
+
+            errors: []
+
+
+    -   # check single request with plain text and query data
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+
+        input:
+            data:
+                -
+                    uri: 'http://example.com/foo?b=b-val'
+                    id: foo
+                    query: {a: a-val}
+                    method: POST
+                    headers: [{name: Content-Type, value: 'application/x-www-form-urlencoded'}]
+                    data: 'form=data&foo=bar'
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [text/plain]
+                data: 'done'
+
+        sentRequests:
+            -   method: POST
+                uri: 'http://example.com/foo?a=a-val'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                    Content-Type: [application/x-www-form-urlencoded]
+                    Content-Length: [17]
+                data: 'form=data&foo=bar'
+
+        output:
+            ok:
+                foo:
+                    id: foo
+                    headers: [{ name: Content-Type, value: text/plain }]
+                    statusCode: 200
+                    data: 'done'
+            failed: []
+            errors: []
+
+    -   # config: request.on_fail=proceed
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+            on_fail: proceed
+        input:
+            data:
+                - { uri: 'http://example.com/foo', id: ask-foo, config: {on_fail: proceed} }
+                - { uri: 'http://example.com/bar', id: ask-bar, req: [ask-foo] }
+
+        responses:
+            -   statusCode: 400
+                headers: []
+                data: 'Bad request'
+
+            -   statusCode: 403
+                headers: []
+                data: 'Forbidden'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+
+            -   method: GET
+                uri: 'http://example.com/bar'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+
+        output:
+            failed:
+                ask-foo:
+                    id: ask-foo
+                    headers: []
+                    statusCode: 400
+                    data: Bad request
+                ask-bar:
+                    id: ask-bar
+                    headers: []
+                    statusCode: 403
+                    data: Forbidden
+            ok: []
+            errors:
+                ask-foo: 'Request failed to complete.'
+                ask-bar: 'Request failed to complete.'
+
+    -   # config: general.silent=true, general.on_fail=abort-queue
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+            on_fail: abort-queue
+        input:
+            data:
+                - { uri: 'http://example.com/foo', id: ask-foo}
+                - { uri: 'http://example.com/bar', id: ask-bar, req: [ask-foo] }
+
+        responses:
+            -   statusCode: 200
+                headers: []
+                data: 'Ok'
+
+            -   statusCode: 400
+                headers: []
+                data: 'Bad request'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+
+            -   method: GET
+                uri: 'http://example.com/bar'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+
+        output:
+            failed:
+                ask-bar:
+                    id: ask-bar
+                    headers: []
+                    statusCode: 400
+                    data: Bad request
+            ok:
+                ask-foo:
+                    id: ask-foo
+                    headers: []
+                    statusCode: 200
+                    data: Ok
+            errors:
+                ask-bar: 'Request failed to complete.'
+
+    -   # app.config_merge=ignore
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+            config_merge: ignore
+        input:
+            data:
+                - { uri: 'http://example.com/foo', id: ask-foo }
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                data: '{"id":1}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                data: ''
+
+        output:
+            ok:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: Content-Type, value: application/json }]
+                    statusCode: 200
+                    data: { id: 1 }
+            failed: []
+            errors: []
+
+    -   # app.config_merge=ignore, request.config_merge=first, expected_status_codes=400, on_fail=proceed
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+            config_merge: ignore
+            on_fail: proceed
+        input:
+            data:
+                -   uri: 'http://example.com/foo'
+                    id: ask-foo
+                    config:
+                        channel: { expected_status_codes: [400] }
+                        config_merge: first
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                data: '{"id":1}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                data: ''
+
+        output:
+            failed:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: Content-Type, value: application/json }]
+                    statusCode: 200
+                    data: { id: 1 }
+            ok: []
+            errors:
+                ask-foo: 'Request failed to complete.'
+
+    -   # app.config_merge=ignore, general.config_merge=first, expected_status_codes=400, on_fail=proceed
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+            config_merge: ignore
+            on_fail: proceed
+        input:
+            config:
+                channel: { expected_status_codes: [400] }
+                config_merge: first
+            data:
+                -   uri: 'http://example.com/foo'
+                    id: ask-foo
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                data: '{"id":1}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                data: ''
+
+        output:
+            failed:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: Content-Type, value: application/json }]
+                    statusCode: 200
+                    data: { id: 1 }
+            ok: []
+            errors:
+                ask-foo: 'Request failed to complete.'
+
+    -   # app.resource_format=text, app.on_fail=proceed
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+            resource_format: text
+            on_fail: proceed
+        input:
+            data:
+                -   uri: 'http://example.com/foo'
+                    id: foo
+
+        responses:
+            -   statusCode: 200
+                headers: []
+                data: 'Good!'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+
+        output:
+            failed: []
+            ok:
+                foo:
+                    id: foo
+                    headers: []
+                    statusCode: 200
+                    data: 'Good!'
+            errors: []
+
+clientRequestProvider:
+    -   # test forwarding receiver headers
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+                    sender_headers: [X-Client]
+                    receiver_headers: [X-Data]
+
+        client:
+            headers: { X-Client: ['mobile-app'], X-Via: [proxy] }
+
+        input:
+            data:
+                -   uri: 'http://example.com/foo'
+                    id: ask-foo
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                    X-Data: ['important payload']
+                data: '{"id":1}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                    X-Client: mobile-app
+
+        output:
+            ok:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: X-Data, value: 'important payload' }]
+                    statusCode: 200
+                    data: { id: 1 }
+            failed: []
+            errors: []
+
+    -   # test not set sender_headers
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+                    sender_headers: []
+                    receiver_headers: [X-Data]
+
+        client:
+            headers: { X-Client: ['mobile-app'], X-Via: [proxy] }
+
+        input:
+            data:
+                -   uri: 'http://example.com/foo'
+                    id: ask-foo
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                    X-Data: ['important payload']
+                data: '{"id":1}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+                    x-client: [mobile-app]
+                    x-via: [proxy]
+
+        output:
+            ok:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: X-Data, value: 'important payload' }]
+                    statusCode: 200
+                    data: { id: 1 }
+            failed: []
+            errors: []
+
+    -   # client request not defined for request stack
+        config:
+            domains:
+                - 'http://example.com'
+            channels:
+                http_graph:
+                    request_options: { headers: { User-Agent: [testing/1.0] } }
+                    sender_headers: []
+                    receiver_headers: [X-Data]
+
+        client: ~
+
+        input:
+            data:
+                -   uri: 'http://example.com/foo'
+                    id: ask-foo
+
+        responses:
+            -   statusCode: 200
+                headers:
+                    Content-Type: [application/json]
+                    X-Data: ['important payload']
+                data: '{"id":1}'
+
+        sentRequests:
+            -   method: GET
+                uri: 'http://example.com/foo'
+                headers:
+                    User-Agent: [testing/1.0]
+                    Host: [example.com]
+
+        output:
+            ok:
+                ask-foo:
+                    id: ask-foo
+                    headers: [{ name: X-Data, value: 'important payload' }]
+                    statusCode: 200
+                    data: { id: 1 }
+            failed: []
+            errors: []
+

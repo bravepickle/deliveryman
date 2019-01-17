@@ -1,0 +1,58 @@
+Deliveryman\Entity\BatchRequest:
+    constraints:
+        -   Deliveryman\Validator\Constraints\HttpGraphChannelData:
+                groups: [http_graph]
+
+    properties:
+        config:
+            -   Valid: ~
+        data:
+            -   NotBlank: ~
+            -   Type: array
+
+Deliveryman\Entity\RequestConfig:
+    properties:
+        onFail:
+            -   Choice: [abort, proceed, abort-queue]
+        configMerge:
+            -   Choice: [first, unique, ignore]
+        silent:
+            -   Type: boolean
+        format:
+            -   Choice: [json, text, binary]
+        channel:
+            -   Valid: ~
+
+Deliveryman\Entity\HttpGraph\ChannelConfig:
+    properties:
+        expectedStatusCodes:
+            -   Type: array
+            -   All:
+                    -   Type: integer
+
+Deliveryman\Entity\HttpGraph\HttpHeader:
+    properties:
+        name:
+            - NotBlank: ~
+            - Length:
+                  min: 1
+                  max: 255
+        value:
+            - Type: string
+
+Deliveryman\Entity\HttpGraph\HttpRequest:
+    properties:
+        req:
+            -   All:
+                    -   Type: string
+        uri:
+            -   NotBlank: ~
+            -   Url: ~
+        method:
+            -   Choice: [GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS]
+        config:
+            -   Valid: ~
+        headers:
+            -   Valid: ~
+        query:
+            -   Type: array

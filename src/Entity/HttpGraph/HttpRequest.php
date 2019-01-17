@@ -1,11 +1,16 @@
 <?php
+/**
+ * Date: 2018-12-22
+ * Time: 20:14
+ */
 
-namespace Deliveryman\Entity;
+namespace Deliveryman\Entity\HttpGraph;
 
 
-use Deliveryman\Normalizer\NormalizableInterface;
+use Deliveryman\Entity\IdentifiableInterface;
+use Deliveryman\Entity\RequestConfig;
 
-class Request implements NormalizableInterface
+class HttpRequest implements IdentifiableInterface
 {
     /**
      * Identifier for given request for referencing aka alias
@@ -33,7 +38,7 @@ class Request implements NormalizableInterface
 
     /**
      * List of requests to send together with request with disregard to config merging strategy
-     * @var RequestHeader[]|null|array
+     * @var HttpHeader[]|null|array
      */
     protected $headers;
 
@@ -46,6 +51,12 @@ class Request implements NormalizableInterface
      * @var mixed
      */
     protected $data;
+
+    /**
+     * List of IDs of HttpRequests that are required to be processed before the given one
+     * @var array
+     */
+    protected $req = [];
 
     /**
      * @param bool $guess generate ID if empty
@@ -74,7 +85,7 @@ class Request implements NormalizableInterface
 
     /**
      * @param mixed $id
-     * @return Request
+     * @return HttpRequest
      */
     public function setId($id)
     {
@@ -93,9 +104,9 @@ class Request implements NormalizableInterface
 
     /**
      * @param string|null $uri
-     * @return Request
+     * @return HttpRequest
      */
-    public function setUri(?string $uri): Request
+    public function setUri(?string $uri): self
     {
         $this->uri = $uri;
 
@@ -117,9 +128,9 @@ class Request implements NormalizableInterface
 
     /**
      * @param string|null $method
-     * @return Request
+     * @return HttpRequest
      */
-    public function setMethod(?string $method): Request
+    public function setMethod(?string $method): self
     {
         $this->method = $method;
 
@@ -136,9 +147,9 @@ class Request implements NormalizableInterface
 
     /**
      * @param RequestConfig|null $config
-     * @return Request
+     * @return HttpRequest
      */
-    public function setConfig(?RequestConfig $config): Request
+    public function setConfig(?RequestConfig $config): self
     {
         $this->config = $config;
 
@@ -146,7 +157,7 @@ class Request implements NormalizableInterface
     }
 
     /**
-     * @return array|RequestHeader[]|null
+     * @return array|HttpHeader[]|null
      */
     public function getHeaders()
     {
@@ -154,10 +165,10 @@ class Request implements NormalizableInterface
     }
 
     /**
-     * @param array|RequestHeader[]|null $headers
-     * @return Request
+     * @param array|HttpHeader[]|null $headers
+     * @return HttpRequest
      */
-    public function setHeaders($headers)
+    public function setHeaders($headers): self
     {
         $this->headers = $headers;
 
@@ -174,9 +185,9 @@ class Request implements NormalizableInterface
 
     /**
      * @param array|null $query
-     * @return Request
+     * @return HttpRequest
      */
-    public function setQuery(?array $query): Request
+    public function setQuery(?array $query): self
     {
         $this->query = $query;
 
@@ -193,13 +204,31 @@ class Request implements NormalizableInterface
 
     /**
      * @param mixed $data
-     * @return Request
+     * @return HttpRequest
      */
-    public function setData($data)
+    public function setData($data): self
     {
         $this->data = $data;
 
         return $this;
     }
 
+    /**
+     * @return array
+     */
+    public function getReq(): array
+    {
+        return $this->req;
+    }
+
+    /**
+     * @param array $req
+     * @return HttpRequest
+     */
+    public function setReq(array $req): HttpRequest
+    {
+        $this->req = $req;
+
+        return $this;
+    }
 }

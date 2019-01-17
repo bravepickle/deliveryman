@@ -10,6 +10,8 @@ class Event extends BasicEvent
      * Executed before cache items being saved
      */
     const EVENT_PRE_SAVE = 'deliveryman.cache.pre_save';
+    const EVENT_PRE_VALIDATION = 'deliveryman.validation.before';
+    const EVENT_POST_VALIDATION = 'deliveryman.validation.after';
 
     /**
      * @var mixed

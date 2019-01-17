@@ -2,10 +2,10 @@
 
 namespace Deliveryman\Entity;
 
-
+use Deliveryman\Entity\HttpGraph\HttpHeader;
 use Deliveryman\Normalizer\NormalizableInterface;
 
-class Response implements NormalizableInterface
+class HttpResponse implements NormalizableInterface, ResponseItemInterface
 {
     const FORMAT_JSON = 'json';
     const FORMAT_TEXT = 'text';
@@ -19,7 +19,7 @@ class Response implements NormalizableInterface
 
     /**
      * List of requests to send together with request with disregard to config merging strategy
-     * @var RequestHeader[]|null|array
+     * @var HttpHeader[]|null|array
      */
     protected $headers;
 
@@ -43,7 +43,7 @@ class Response implements NormalizableInterface
 
     /**
      * @param mixed $id
-     * @return Response
+     * @return HttpResponse
      */
     public function setId($id)
     {
@@ -53,7 +53,7 @@ class Response implements NormalizableInterface
     }
 
     /**
-     * @return array|RequestHeader[]|null
+     * @return array|HttpHeader[]|null
      */
     public function getHeaders()
     {
@@ -61,8 +61,8 @@ class Response implements NormalizableInterface
     }
 
     /**
-     * @param array|RequestHeader[]|null $headers
-     * @return Response
+     * @param array|HttpHeader[]|null $headers
+     * @return HttpResponse
      */
     public function setHeaders($headers)
     {
@@ -81,7 +81,7 @@ class Response implements NormalizableInterface
 
     /**
      * @param mixed $statusCode
-     * @return Response
+     * @return HttpResponse
      */
     public function setStatusCode($statusCode)
     {
@@ -100,7 +100,7 @@ class Response implements NormalizableInterface
 
     /**
      * @param mixed $data
-     * @return Response
+     * @return HttpResponse
      */
     public function setData($data)
     {

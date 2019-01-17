@@ -9,12 +9,12 @@ use Symfony\Component\EventDispatcher\Event as BasicEvent;
 class EventSender extends BasicEvent
 {
     /**
-     * Is called before sender sends queues for processing inside client provider
+     * Is called before sender sends data for processing inside client provider
      */
     const EVENT_SENDER_PRE_SEND = 'deliveryman.sender.pre_send';
 
     /**
-     * Is called before sender sends queues for processing inside client provider
+     * Is called before sender sends data for processing inside client provider
      */
     const EVENT_SENDER_POST_SEND = 'deliveryman.sender.post_send';
 

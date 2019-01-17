@@ -6,9 +6,9 @@
 
 namespace Deliveryman\Channel;
 
+use Deliveryman\Entity\BatchRequest;
+use Deliveryman\Entity\ResponseItemInterface;
 use Deliveryman\Exception\ChannelException;
-use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\ResponseInterface;
 
 /**
  * Interface ChannelInterface
@@ -24,13 +24,12 @@ interface ChannelInterface
     public function getName(): string;
 
     /**
-     * Send all queues.
+     * Send all data.
      * Should be optimized for the best performance gains
-     * @param array|RequestInterface[] $queues list of requests or associated map
-     * @return ResponseInterface[]|array|null list of responses with keys as they were in request
-     * @throws ChannelException thrown when request send failed unexpectedly and queues must be terminated
+     * @param BatchRequest $batchRequest
+     * @throws ChannelException
      */
-    public function send(array $queues);
+    public function send(BatchRequest $batchRequest);
 
     /**
      * Return all errors that appeared during last session of sending data
@@ -61,7 +60,7 @@ interface ChannelInterface
     /**
      * Return all responses that considered as succeeded
      * with keys taken from request data
-     * @return array|ResponseInterface[]
+     * @return array|ResponseItemInterface[]
      */
     public function getOkResponses(): array;
 
@@ -79,15 +78,15 @@ interface ChannelInterface
     /**
      * Add succeeded response
      * @param $path
-     * @param ResponseInterface $response
+     * @param ResponseItemInterface $response
      * @return $this
      */
-    public function addOkResponse($path, ResponseInterface $response);
+    public function addOkResponse($path, ResponseItemInterface $response);
 
     /**
      * Return all errors that appeared during last session of sending data
      * with keys taken from request data
-     * @return array|ResponseInterface[]
+     * @return array|ResponseItemInterface[]
      */
     public function getFailedResponses(): array;
 
@@ -105,10 +104,10 @@ interface ChannelInterface
     /**
      * Add failed response
      * @param $path
-     * @param ResponseInterface $response
+     * @param ResponseItemInterface $response
      * @return $this
      */
-    public function addFailedResponse($path, ResponseInterface $response);
+    public function addFailedResponse($path, ResponseItemInterface $response);
 
     /**
      * Clear all generated data: responses, errors

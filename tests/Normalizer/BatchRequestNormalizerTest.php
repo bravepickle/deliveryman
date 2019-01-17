@@ -34,12 +34,13 @@ class BatchRequestNormalizerTest extends TestCase
     public function testBasic(array $input, array $expected)
     {
         $serializer = $this->buildSerializer();
-        $this->assertTrue($serializer->supportsDenormalization($input, BatchRequest::class));
+        $this->assertTrue($serializer->supportsDenormalization($input, BatchRequest::class, null, ['channel' => 'http_graph']));
 
-        $object = $serializer->denormalize($input, BatchRequest::class);
+        $object = $serializer->denormalize($input, BatchRequest::class, null, ['channel' => 'http_graph']);
         $this->assertEquals(BatchRequest::class, get_class($object), 'Return object class name must match expected one');
 
-        $actual = $serializer->normalize($object);
+        $actual = $serializer->normalize($object, null, ['channel' => 'http_graph']);
+
         $this->assertEquals($expected, $actual, 'Data denormalization differs from expected');
     }
 
@@ -60,11 +61,10 @@ class BatchRequestNormalizerTest extends TestCase
                         'silent' => true,
                         'configMerge' => null,
                         'onFail' => null,
-                        'expectedStatusCodes' => null,
                         'format' => null,
                         'channel' => null,
                     ],
-                    'queues' => null,
+                    'data' => null,
                 ],
             ],
             [
@@ -73,7 +73,7 @@ class BatchRequestNormalizerTest extends TestCase
                         'silent' => false,
                         'configMerge' => 'first',
                         'onFail' => 'proceed',
-                        'expectedStatusCodes' => 200,
+                        'channel' => ['expectedStatusCodes' => [200],],
                     ],
                 ],
                 'expected' => [
@@ -81,36 +81,33 @@ class BatchRequestNormalizerTest extends TestCase
                         'silent' => false,
                         'configMerge' => 'first',
                         'onFail' => 'proceed',
-                        'expectedStatusCodes' => [200],
                         'format' => null,
-                        'channel' => null,
+                        'channel' => ['expectedStatusCodes' => [200],],
                     ],
-                    'queues' => null,
+                    'data' => null,
                 ],
             ],
             [
                 'input' => [
-                    'queues' => [
-                        [ // queue #1
-                            [ // request #1
-                                'id' => 'read_book',
-                                'uri' => 'http://example.com/books/1',
-                                'method' => 'GET',
-                                'config' => [
-                                    'onFail' => 'abort',
-                                    'configMerge' => 'unique',
-                                    'expectedStatusCodes' => [200, 404],
-                                ],
-                                'headers' => [
-                                    ['name' => 'Origin', 'value' => 'http://admin-panel.example.com'],
-                                ],
-                                'query' => [
-                                    'fields' => ['id', 'title'],
-                                    'include' => 'author',
-                                ],
+                    'data' => [
+                        [
+                            'id' => 'read_book',
+                            'uri' => 'http://example.com/books/1',
+                            'method' => 'GET',
+                            'config' => [
+                                'onFail' => 'abort',
+                                'configMerge' => 'unique',
+                                'channel' => ['expectedStatusCodes' => [200, 404],],
+                            ],
+                            'headers' => [
+                                ['name' => 'Origin', 'value' => 'http://admin-panel.example.com'],
+                            ],
+                            'query' => [
+                                'fields' => ['id', 'title'],
+                                'include' => 'author',
                             ],
                         ],
-                        [ // queue #2 with single POST request
+                        [
                             'id' => 'create_author',
                             'uri' => 'http://example.com/authors?fields=id',
                             'method' => 'POST',
@@ -123,43 +120,39 @@ class BatchRequestNormalizerTest extends TestCase
                 ],
                 'expected' => [
                     'config' => null,
-                    'queues' => [
+                    'data' => [
                         [
-                            [
-                                'id' => 'read_book',
-                                'uri' => 'http://example.com/books/1',
-                                'method' => 'GET',
-                                'config' => [
-                                    'onFail' => 'abort',
-                                    'configMerge' => 'unique',
-                                    'expectedStatusCodes' => [200, 404],
-                                    'silent' => null,
-                                    'format' => null,
-                                    'channel' => null,
-                                ],
-                                'headers' => [
-                                    ['name' => 'Origin', 'value' => 'http://admin-panel.example.com'],
-                                ],
-                                'query' => [
-                                    'fields' => ['id', 'title'],
-                                    'include' => 'author',
-                                ],
-                                'data' => null,
+                            'id' => 'read_book',
+                            'uri' => 'http://example.com/books/1',
+                            'method' => 'GET',
+                            'config' => [
+                                'onFail' => 'abort',
+                                'configMerge' => 'unique',
+                                'silent' => null,
+                                'format' => null,
+                                'channel' => ['expectedStatusCodes' => [200, 404],],
                             ],
-                        ],
+                            'headers' => [
+                                ['name' => 'Origin', 'value' => 'http://admin-panel.example.com'],
+                            ],
+                            'query' => [
+                                'fields' => ['id', 'title'],
+                                'include' => 'author',
+                            ],
+                            'data' => null,
+                            'req' => [],                        ],
                         [
-                            [
-                                'id' => 'create_author',
-                                'uri' => 'http://example.com/authors?fields=id',
-                                'method' => 'POST',
-                                'config' => null,
-                                'headers' => null,
-                                'query' => null,
-                                'data' => [
-                                    'firstname' => 'John',
-                                    'lastname' => 'Doe',
-                                ],
+                            'id' => 'create_author',
+                            'uri' => 'http://example.com/authors?fields=id',
+                            'method' => 'POST',
+                            'config' => null,
+                            'headers' => null,
+                            'query' => null,
+                            'data' => [
+                                'firstname' => 'John',
+                                'lastname' => 'Doe',
                             ],
+                            'req' => [],
                         ],
                     ],
                 ],

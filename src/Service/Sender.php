@@ -6,26 +6,17 @@ namespace Deliveryman\Service;
 use Deliveryman\Channel\ChannelInterface;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
-use Deliveryman\Entity\Request;
 use Deliveryman\Entity\RequestConfig;
-use Deliveryman\Entity\RequestHeader;
-use Deliveryman\Entity\Response;
-use Deliveryman\EventListener\BuildResponseEvent;
 use Deliveryman\EventListener\EventSender;
 use Deliveryman\Exception\ChannelException;
-use Deliveryman\Exception\SendingException;
-use Deliveryman\Exception\SerializationException;
-use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\Serializer\Encoder\JsonDecode;
-use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 
 /**
  * Class Sender
  * Is a facade for sending parsed batch request
  * @package Deliveryman\Service
  */
-class Sender
+class Sender implements SenderInterface
 {
     /**
      * @var ChannelInterface
@@ -68,36 +59,16 @@ class Sender
     }
 
     /**
-     * Process batch request queries
-     * @param BatchRequest $batchRequest
-     * @return BatchResponse
-     * @throws SendingException
-     * @throws \Psr\Cache\InvalidArgumentException
-     * @throws SerializationException
+     * @inheritdoc
      */
-    public function send(BatchRequest $batchRequest)
+    public function send(BatchRequest $batchRequest): BatchResponse
     {
-        // 0. check global config settings
-        // 1. loop through queues to send requests in parallel
-        // 2. merge configs according to settings per request
-        // 3. create queues and process them accordingly
-        // 4. dispatch events per requests, queues etc.
-        // 5. validate batch request allowed by master config
-
         $this->channel->clear();
-
-        if (!$batchRequest->getQueues()) {
-            throw new SendingException('No queues with requests specified to process.');
-        }
-
         $channel = $this->channel;
-
-        $errors = $this->validator->validate($batchRequest);
+        $errors = $this->validator->validate($batchRequest, ['Default', $this->channel->getName()]);
         if (!empty($errors)) {
             return $this->wrapErrors($errors);
         }
-
-        $requests = $this->mergeConfigsPerRequest($batchRequest);
 
         $aborted = false;
         if (!$this->dispatcher) {
@@ -116,23 +87,20 @@ class Sender
             $channel = $event->getChannel();
         }
 
-        return $this->wrapResponses($channel, $requests, $aborted);
+        return $this->wrapResponses($channel, $aborted);
     }
 
     /**
      * @param ChannelInterface $channel
-     * @param array|Request[] $requests
      * @param bool $aborted
      * @return BatchResponse
-     * @throws SerializationException
      */
     protected function wrapResponses(
         ChannelInterface $channel,
-        array $requests,
         bool $aborted
     ): BatchResponse
     {
-        list($okResp, $failResp) = $this->buildResponses($channel, $requests);
+        list($okResp, $failResp) = $this->buildResponses($channel);
 
         $batchResponse = new BatchResponse();
         if ($aborted) {
@@ -181,253 +149,23 @@ class Sender
     }
 
     /**
-     * Return list of request IDs map with resource expected formats
-     * @param array $queues
-     * @return array
-     */
-    protected function mapRequestIds(array $queues): array
-    {
-        $map = [];
-        foreach ($queues as $queue) {
-            /** @var Request $request */
-            foreach ($queue as $request) {
-                $map[$request->getId()] = $request;
-            }
-        }
-
-        return $map;
-    }
-
-    /**
-     * Map requests meta data to Ids
-     * @param BatchRequest $batchRequest
-     * @return array|RequestConfig[]
-     * @throws SerializationException
-     * @throws \Psr\Cache\InvalidArgumentException
-     */
-    protected function mergeConfigsPerRequest(BatchRequest $batchRequest): array
-    {
-        $appConfig = $this->getMasterConfig();
-        $requestsMap = $this->mapRequestIds($batchRequest->getQueues());
-        $map = [];
-        /** @var Request $request */
-        foreach ($requestsMap as $id => $request) {
-            // update config with merged one
-            $map[$id] = $request->setConfig($this->buildRequestConfig($request, $batchRequest, $appConfig));
-        }
-
-        return $map;
-    }
-
-    /**
      * @param ChannelInterface $channel
-     * @param array|Request[] $requests mapped requests by ids
      * @return array
-     * @throws SerializationException
      */
-    protected function buildResponses(ChannelInterface $channel, array $requests): array
+    protected function buildResponses(ChannelInterface $channel): array
     {
         $succeededResp = [];
         $failedResp = [];
 
-        // TODO: check expected status codes and split responses to good and bad
-
         foreach ($channel->getOkResponses() as $id => $srcResponse) {
-            // TODO: dispatcher extend with config request resulting object
-            // TODO: add headers from config
-
-            $requestConfig = $requests[$id]->getConfig();
-
-            $targetResponse = new Response();
-            $targetResponse->setId($id);
-            $targetResponse->setStatusCode($srcResponse->getStatusCode());
-            $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
-
-            $this->genResponseBody($requestConfig->getFormat(), $srcResponse, $targetResponse);
-
-            if ($this->dispatcher) {
-                $event = new BuildResponseEvent($targetResponse, $srcResponse, $requestConfig);
-                $this->dispatcher->dispatch(BuildResponseEvent::EVENT_POST_BUILD, $event);
-                $targetResponse = $event->getTargetResponse();
-                $requestConfig = $event->getRequestConfig();
-            }
-
-            if (in_array($srcResponse->getStatusCode(), $requestConfig->getExpectedStatusCodes())) {
-                if (!$requestConfig->getSilent()) {
-                    $succeededResp[$targetResponse->getId()] = $targetResponse;
-                }
-            } else {
-                $failedResp[$targetResponse->getId()] = $targetResponse;
-            }
+            $succeededResp[$srcResponse->getId()] = $srcResponse;
         }
 
         foreach ($channel->getFailedResponses() as $id => $srcResponse) {
-            $requestConfig = $requests[$id]->getConfig();
-
-            $targetResponse = new Response();
-            $targetResponse->setId($id);
-            $targetResponse->setStatusCode($srcResponse->getStatusCode());
-            $targetResponse->setHeaders($this->buildResponseHeaders($srcResponse));
-
-            $this->genResponseBody($requestConfig->getFormat(), $srcResponse, $targetResponse);
-
-            if ($this->dispatcher) {
-                $event = new BuildResponseEvent($targetResponse, $srcResponse, $requestConfig);
-                $this->dispatcher->dispatch(BuildResponseEvent::EVENT_FAILED_POST_BUILD, $event);
-                $targetResponse = $event->getTargetResponse();
-            }
-
-            $failedResp[$targetResponse->getId()] = $targetResponse;
+            $failedResp[$srcResponse->getId()] = $srcResponse;
         }
 
         return [$succeededResp, $failedResp];
-    }
-
-    /**
-     * @param ResponseInterface $srcResponse
-     * @return array
-     */
-    protected function buildResponseHeaders(ResponseInterface $srcResponse): array
-    {
-        $headers = [];
-        foreach ($srcResponse->getHeaders() as $name => $values) {
-            foreach ($values as $value) {
-                $headers[] = new RequestHeader($name, $value);
-            }
-        }
-
-        return $headers;
-    }
-
-    /**
-     * @param string $format
-     * @param ResponseInterface $srcResponse
-     * @param Response $targetResponse
-     * @throws SerializationException
-     */
-    protected function genResponseBody($format, ResponseInterface $srcResponse, Response $targetResponse): void
-    {
-        switch ($format) {
-            case Response::FORMAT_JSON:
-                // TODO: if exception thrown then somehow mark response as failed and write some error info
-                $data = $srcResponse->getBody()->getContents();
-                if ($data === '' || $data === null) {
-                    $targetResponse->setData(null);
-                } else {
-                    try {
-                        $targetResponse->setData((new JsonDecode())
-                            ->decode($data,'json', ['json_decode_associative' => true]));
-                    } catch (NotEncodableValueException $e) {
-                        // TODO: add event dispatcher, if defined
-                        $targetResponse->setData($data); // set raw data
-                    }
-                }
-                break;
-            case Response::FORMAT_TEXT:
-                $targetResponse->setData($srcResponse->getBody()->getContents());
-                break;
-            case Response::FORMAT_BINARY:
-                // TODO: implement me! Download files to tmp dir and return links to those files
-                // TODO: implement FileStorageInterface to abstract place for storing files
-            default:
-                throw new SerializationException('Not supported format: ' . $format);
-        }
-    }
-
-    /**
-     * @param Request $request
-     * @param BatchRequest $batchRequest
-     * @param array $appConfig
-     * @return RequestConfig
-     * @throws SerializationException
-     */
-    protected function buildRequestConfig(Request $request, BatchRequest $batchRequest, array $appConfig)
-    {
-        $requestCfg = $request->getConfig();
-        $generalCfg = $batchRequest->getConfig();
-
-        if (!$generalCfg) {
-            if ($requestCfg) {
-                return $this->mergeRequestConfigDefaults($appConfig, $requestCfg);
-            }
-
-            return $this->genDefaultConfig($appConfig);
-        }
-
-        if ($requestCfg) {
-            $cfgMergeStrategy = $requestCfg->getConfigMerge() ?? $generalCfg->getConfigMerge() ??
-                $appConfig['config_merge'];
-
-            switch ($cfgMergeStrategy) {
-                case RequestConfig::CONFIG_MERGE_FIRST: return $this->mergeRequestConfigDefaults($appConfig, $requestCfg);
-                case RequestConfig::CONFIG_MERGE_UNIQUE:
-                    return $this->mergeRequestConfigScopes($appConfig, $requestCfg, $generalCfg, $cfgMergeStrategy);
-                case RequestConfig::CONFIG_MERGE_IGNORE: return $this->genDefaultConfig($appConfig);
-                default:
-                    throw new SerializationException('Unexpected config merge strategy type: ' .
-                        $cfgMergeStrategy
-                    );
-            }
-        } else {
-            return clone $generalCfg;
-        }
-    }
-
-    /**
-     * @param RequestConfig $newConfig
-     * @param RequestConfig|null $requestCfg
-     * @param RequestConfig|null $generalCfg
-     * @param array $appConfig
-     * @throws SerializationException
-     */
-    protected function mergeExpectedStatusCodes(RequestConfig $newConfig, ?RequestConfig $requestCfg, ?RequestConfig $generalCfg, array $appConfig): void
-    {
-        // TODO: set status codes from app config if not set here
-        // TODO: merge strategy should be used to define how to merge
-
-        switch($newConfig->getConfigMerge()) {
-            case RequestConfig::CONFIG_MERGE_IGNORE:
-                $newConfig->setExpectedStatusCodes($appConfig['expected_status_codes']);
-                break;
-            case RequestConfig::CONFIG_MERGE_FIRST:
-                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
-                    $newConfig->setExpectedStatusCodes($requestCfg->getExpectedStatusCodes());
-                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
-                    $newConfig->setExpectedStatusCodes($generalCfg->getExpectedStatusCodes());
-                } else {
-                    $newConfig->setExpectedStatusCodes($appConfig['expected_status_codes']);
-                }
-                break;
-            case RequestConfig::CONFIG_MERGE_UNIQUE:
-                if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
-                    if ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
-                        $newConfig->setExpectedStatusCodes(array_merge(
-                            $requestCfg->getExpectedStatusCodes(),
-                            $generalCfg->getExpectedStatusCodes()
-                        ));
-                    } else {
-                        $newConfig->setExpectedStatusCodes($requestCfg->getExpectedStatusCodes());
-                    }
-                } elseif ($generalCfg && $generalCfg->getExpectedStatusCodes()) {
-                    if ($requestCfg && $requestCfg->getExpectedStatusCodes()) {
-                        $newConfig->setExpectedStatusCodes(array_merge(
-                            $requestCfg->getExpectedStatusCodes(),
-                            $generalCfg->getExpectedStatusCodes()
-                        ));
-                    } else {
-                        $newConfig->setExpectedStatusCodes($generalCfg->getExpectedStatusCodes());
-                    }
-                } else {
-                    $newConfig->setExpectedStatusCodes($appConfig['expected_status_codes']);
-                }
-                break;
-
-            default:
-                // TODO: logic exception
-                throw new SerializationException('Unexpected config merge strategy type: ' .
-                    $newConfig->getConfigMerge()
-                );
-        }
     }
 
     /**
@@ -442,7 +180,6 @@ class Sender
         $newConfig->setSilent($appConfig['silent']);
         $newConfig->setOnFail($appConfig['on_fail']);
         $newConfig->setConfigMerge($appConfig['config_merge']);
-        $newConfig->setExpectedStatusCodes($appConfig['expected_status_codes']);
 
         return $newConfig;
     }
@@ -453,7 +190,6 @@ class Sender
      * @param RequestConfig|null $generalCfg
      * @param string|null $cfgMergeStrategy
      * @return RequestConfig
-     * @throws SerializationException
      */
     protected function mergeRequestConfigScopes(array $appConfig, ?RequestConfig $requestCfg, ?RequestConfig $generalCfg, ?string $cfgMergeStrategy): RequestConfig
     {
@@ -468,7 +204,6 @@ class Sender
             $generalCfg->getOnFail() ?? $appConfig['on_fail']);
 
         $newConfig->setConfigMerge($cfgMergeStrategy);
-        $this->mergeExpectedStatusCodes($newConfig, $requestCfg, $generalCfg, $appConfig);
 
         return $newConfig;
     }
@@ -477,7 +212,6 @@ class Sender
      * @param array $appConfig
      * @param RequestConfig|null $requestCfg
      * @return RequestConfig
-     * @throws SerializationException
      */
     protected function mergeRequestConfigDefaults(array $appConfig, RequestConfig $requestCfg): RequestConfig
     {
@@ -487,8 +221,6 @@ class Sender
         $newConfig->setSilent($appConfig['silent'] ?: $requestCfg->getSilent());
         $newConfig->setOnFail($requestCfg->getOnFail() ?? $appConfig['on_fail']);
         $newConfig->setConfigMerge($requestCfg->getConfigMerge() ?? $appConfig['config_merge']);
-
-        $this->mergeExpectedStatusCodes($newConfig, $requestCfg, null, $appConfig);
 
         return $newConfig;
     }
@@ -501,7 +233,7 @@ class Sender
     protected function dispatchSend(BatchRequest $batchRequest, ChannelInterface $channel, bool &$aborted = false)
     {
         try {
-            $channel->send($batchRequest->getQueues());
+            $channel->send($batchRequest);
         } catch (ChannelException $e) {
             $aborted = true;
         }
