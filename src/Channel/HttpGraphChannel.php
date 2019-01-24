@@ -14,6 +14,7 @@ use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Entity\ResponseItemInterface;
 use Deliveryman\EventListener\BuildResponseEvent;
 use Deliveryman\Exception\HttpGraphChannelException;
+use Deliveryman\Exception\InvalidArgumentException;
 use Deliveryman\Exception\LogicException;
 use Deliveryman\Exception\SendingException;
 use Deliveryman\Service\ConfigManager;
@@ -23,14 +24,12 @@ use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\RequestOptions;
 use GuzzleHttp\Promise;
-use http\Exception\InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Serializer\Encoder\JsonDecode;
 use Symfony\Component\Serializer\Exception\NotEncodableValueException;
-use Symfony\Component\Serializer\SerializerInterface;
 
 /**
  * Class HttpGraphChannel
@@ -364,7 +363,9 @@ class HttpGraphChannel extends AbstractChannel
     {
         return function (ResponseInterface $response) use ($client, $node, $request) {
             $this->setNodeState($node, self::NODE_STATE_SEND_FINISHED);
-            if (!in_array($response->getStatusCode(), (array)$request->getConfig()->getChannel()->getExpectedStatusCodes())) {
+            /** @var ChannelConfig $channelConfig */
+            $channelConfig = $request->getConfig()->getChannel();
+            if (!in_array($response->getStatusCode(), (array)$channelConfig->getExpectedStatusCodes())) {
                 $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
@@ -478,7 +479,9 @@ class HttpGraphChannel extends AbstractChannel
     protected function getSendFulfilledCallback(HttpRequest $request): \Closure
     {
         return function (ResponseInterface $response) use ($request) {
-            if (!in_array($response->getStatusCode(), (array)$request->getConfig()->getChannel()->getExpectedStatusCodes())) {
+            /** @var ChannelConfig $channelConfig */
+            $channelConfig = $request->getConfig()->getChannel();
+            if (!in_array($response->getStatusCode(), (array)$channelConfig->getExpectedStatusCodes())) {
                 $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
