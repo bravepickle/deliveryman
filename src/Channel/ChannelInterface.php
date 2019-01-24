@@ -7,6 +7,8 @@
 namespace Deliveryman\Channel;
 
 use Deliveryman\Entity\ResponseItemInterface;
+use Deliveryman\Exception\ChannelException;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Transport\Sender\SenderInterface;
 
 /**
@@ -105,4 +107,10 @@ interface ChannelInterface extends SenderInterface
      */
     public function clear(): void;
 
+
+    /**
+     * @inheritdoc
+     * @throws ChannelException
+     */
+    public function send(Envelope $envelope): Envelope;
 }

@@ -26,6 +26,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -43,7 +44,7 @@ class HttpGraphChannelTest extends TestCase
     /**
      * @dataProvider sendProvider
      * @param array $appConfig
-     * @param BatchRequest $input
+     * @param Envelope $input
      * @param array|Response[] $responses
      * @param array $expectedRequests
      * @param array $expected
@@ -52,7 +53,7 @@ class HttpGraphChannelTest extends TestCase
      * @throws \Deliveryman\Exception\LogicException
      * @throws \Deliveryman\Exception\InvalidArgumentException
      */
-    public function testSend(array $appConfig, BatchRequest $input, array $responses, array $expectedRequests, array $expected)
+    public function testSend(array $appConfig, Envelope $input, array $responses, array $expectedRequests, array $expected)
     {
         $mockHandler = new MockHandler($responses);
         $handler = HandlerStack::create(function (
@@ -139,7 +140,7 @@ class HttpGraphChannelTest extends TestCase
         $configManager->addConfiguration(['domains' => ['localhost']]);
 
         $channel = new HttpGraphChannel($configManager);
-        $channel->send($batch);
+        $channel->send(new Envelope($batch));
     }
 
     /**
@@ -178,7 +179,7 @@ class HttpGraphChannelTest extends TestCase
         $configManager->addConfiguration($appConfig);
 
         $channel = new HttpGraphChannel($configManager);
-        $channel->send($input);
+        $channel->send(new Envelope($input));
 
         $this->assertEquals($expected['ok'], $channel->getOkResponses(), 'Success responses differ');
         $this->assertEquals($expected['failed'], $channel->getFailedResponses(), 'Failed responses differ');
@@ -221,7 +222,7 @@ class HttpGraphChannelTest extends TestCase
         $configManager->addConfiguration($appConfig);
 
         $channel = new HttpGraphChannel($configManager);
-        $channel->send($input);
+        $channel->send(new Envelope($input));
 
         $this->assertEquals([], $channel->getOkResponses(), 'Success responses differ');
         $this->assertEquals(['home', 'logout', 'feedback', 'login', 'profile',], array_keys($channel->getFailedResponses()), 'Failed responses differ');
@@ -259,7 +260,7 @@ class HttpGraphChannelTest extends TestCase
         $configManager->addConfiguration($appConfig);
 
         $channel = new HttpGraphChannel($configManager);
-        $channel->send($input);
+        $channel->send(new Envelope($input));
     }
 
     /**
@@ -291,7 +292,7 @@ class HttpGraphChannelTest extends TestCase
         $configManager->addConfiguration($appConfig);
 
         $channel = new HttpGraphChannel($configManager);
-        $channel->send($input);
+        $channel->send(new Envelope($input));
     }
 
     /**
@@ -323,7 +324,7 @@ class HttpGraphChannelTest extends TestCase
         $configManager->addConfiguration($appConfig);
 
         $channel = new HttpGraphChannel($configManager);
-        $channel->send($input);
+        $channel->send(new Envelope($input));
     }
 
     /**
@@ -355,7 +356,7 @@ class HttpGraphChannelTest extends TestCase
         $configManager->addConfiguration($appConfig);
 
         $channel = new HttpGraphChannel($configManager);
-        $channel->send($input);
+        $channel->send(new Envelope($input));
     }
 
     /**
@@ -387,7 +388,7 @@ class HttpGraphChannelTest extends TestCase
         $configManager->addConfiguration($appConfig);
 
         $channel = new HttpGraphChannel($configManager);
-        $channel->send($input);
+        $channel->send(new Envelope($input));
     }
 
     /**
@@ -421,7 +422,7 @@ class HttpGraphChannelTest extends TestCase
         $configManager->addConfiguration($appConfig);
 
         $channel = new HttpGraphChannel($configManager);
-        $channel->send($input);
+        $channel->send(new Envelope($input));
 
 //        print_r($channel->getFailedResponses());
 //        print_r($channel->getErrors());
@@ -461,14 +462,14 @@ class HttpGraphChannelTest extends TestCase
         $configManager->addConfiguration($appConfig);
 
         $channel = new HttpGraphChannel($configManager, null, $dispatcher);
-        $channel->send($input);
+        $channel->send(new Envelope($input));
     }
 
     /**
      * @dataProvider clientRequestProvider
      * @param array $appConfig
      * @param \Symfony\Component\HttpFoundation\Request $clientRequest
-     * @param BatchRequest $input
+     * @param Envelope $input
      * @param array $responses
      * @param array $expectedRequests
      * @param array $expected
@@ -480,7 +481,7 @@ class HttpGraphChannelTest extends TestCase
     public function testSendClientRequest(
         array $appConfig,
         ?\Symfony\Component\HttpFoundation\Request $clientRequest,
-        BatchRequest $input,
+        Envelope $input,
         array $responses,
         array $expectedRequests,
         array $expected
@@ -605,9 +606,11 @@ class HttpGraphChannelTest extends TestCase
                 ->setChannel($datum['input']['config']['channel'] ?? null);
         }
 
-        $data[$key]['input'] = (new BatchRequest())
+        $data[$key]['input'] = new Envelope(
+            (new BatchRequest())
             ->setConfig($datum['input']['config'] ?? null)
-            ->setData($body);
+            ->setData($body)
+        );
     }
 
     /**

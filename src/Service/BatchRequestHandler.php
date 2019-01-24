@@ -10,6 +10,7 @@ use Deliveryman\Entity\RequestConfig;
 use Deliveryman\EventListener\EventSender;
 use Deliveryman\Exception\ChannelException;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Messenger\Envelope;
 
 /**
  * Class BatchRequestHandler
@@ -233,7 +234,7 @@ class BatchRequestHandler implements BatchRequestHandlerInterface
     protected function dispatchSend(BatchRequest $batchRequest, ChannelInterface $channel, bool &$aborted = false)
     {
         try {
-            $channel->send($batchRequest);
+            $channel->send(new Envelope($batchRequest));
         } catch (ChannelException $e) {
             $aborted = true;
         }

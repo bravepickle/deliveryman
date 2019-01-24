@@ -72,7 +72,7 @@ class IntegrationTest extends TestCase
      * @return BatchRequestHandler
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function initSender(array $config, ?HttpRequest $masterRequest = null): BatchRequestHandler
+    protected function initHandler(array $config, ?HttpRequest $masterRequest = null): BatchRequestHandler
     {
         $configManager = new ConfigManager();
         $configManager->addConfiguration($config);
@@ -124,14 +124,14 @@ class IntegrationTest extends TestCase
 
             return $mockHandler($request, $options);
         });
-        $sender = $this->initSender($config);
+        $sender = $this->initHandler($config);
         $serializer = $this->initSerializer();
 
         $this->assertTrue($serializer->supportsDenormalization($input, BatchRequest::class));
 
         /** @var BatchRequest $batchRequest */
         $batchRequest = $serializer->denormalize($input, BatchRequest::class, null, ['channel' => 'http_graph']);
-        $batchResponse = $sender->send($batchRequest);
+        $batchResponse = $sender($batchRequest);
 
         $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json', ['channel' => 'http_graph']));
         $actual = $serializer->normalize($batchResponse, null, ['channel' => 'http_graph']);
@@ -175,14 +175,14 @@ class IntegrationTest extends TestCase
             return $mockHandler($request, $options);
         });
 
-        $sender = $this->initSender($config, $masterRequest);
+        $sender = $this->initHandler($config, $masterRequest);
         $serializer = $this->initSerializer();
 
         $this->assertTrue($serializer->supportsDenormalization($input, BatchRequest::class));
 
         /** @var BatchRequest $batchRequest */
         $batchRequest = $serializer->denormalize($input, BatchRequest::class, null, ['channel' => 'http_graph']);
-        $batchResponse = $sender->send($batchRequest);
+        $batchResponse = $sender($batchRequest);
 
         $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json', ['channel' => 'http_graph']));
         $actual = $serializer->normalize($batchResponse, null, ['channel' => 'http_graph']);
