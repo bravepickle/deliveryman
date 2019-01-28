@@ -33,7 +33,7 @@ class BatchRequestValidator
     protected $validator;
 
     /**
-     * Sender constructor.
+     * BatchRequestHandler constructor.
      * @param ConfigManager $configManager
      * @param EventDispatcherInterface|null $dispatcher
      * @param ValidatorInterface|null $validator
@@ -84,91 +84,4 @@ class BatchRequestValidator
 
         return $errors;
     }
-
-//    /**
-//     * @param BatchRequest $batchRequest
-//     * @param array $errors
-//     * @throws \Psr\Cache\InvalidArgumentException
-//     */
-//    protected function validateRequests(BatchRequest $batchRequest, array &$errors)
-//    {
-//        // todo: move to validation config
-//        if (!$batchRequest->getData()) {
-//            return; // validate elsewhere
-//        }
-//
-//        $config = $this->configManager->getConfiguration();
-//        $domains = $config['domains'];
-//        $allowedHostNames = []; // without protocol
-//        $allowedBaseUris = [];  // specified protocol and, probably, base path
-//
-//        foreach ($domains as $domain) {
-//            if (preg_match('~^https?://.+~i', $domain)) {
-//                $allowedBaseUris[] = $domain;
-//            } else {
-//                $allowedHostNames[] = $domain;
-//            }
-//        }
-//
-//        $aliases = [];
-//        foreach ($batchRequest->getData() as $queue) {
-//            /** @var Request $request */
-//            foreach ($queue as $request) {
-//                $this->validateUri($request, $allowedHostNames, $allowedBaseUris, $errors);
-//
-//                $alias = $request->getId();
-//                if ($this->validateAlias($alias, $aliases, $errors)) {
-//                    $aliases[] = $alias;
-//                }
-//            }
-//        }
-//    }
-//
-//    /**
-//     * @param $alias
-//     * @param array $aliases
-//     * @param array $errors
-//     * @return bool
-//     */
-//    protected function validateAlias($alias, array $aliases, array &$errors): bool
-//    {
-//        if (in_array($alias, $aliases)) {
-//            $errors[$alias][] = self::MSG_AMBIGUOUS_REQUEST_ALIAS;
-//
-//            return false;
-//        }
-//
-//        return true;
-//    }
-//
-//    /**
-//     * @param Request $request
-//     * @param array $allowedHostNames
-//     * @param array $allowedBaseUris
-//     * @param array $errors
-//     */
-//    protected function validateUri(Request $request, array $allowedHostNames, array $allowedBaseUris, array &$errors)
-//    {
-//        $path = $request->getId() ?: self::GENERAL_ERROR_PATH;
-//        if (!$request->getUri()) {
-//            $errors[$path][] = self::MSG_EMPTY_URI;
-//
-//            return;
-//        }
-//
-//        foreach ($allowedBaseUris as $baseUri) {
-//            if (stripos($request->getUri(), $baseUri) !== false) {
-//                return; // found match
-//            }
-//        }
-//
-//        foreach ($allowedHostNames as $hostName) {
-//            $hostName = preg_quote($hostName, '~');
-//            if (preg_match('~^https?://' . $hostName . '($|/)~i', $request->getUri())) {
-//                return; // found match
-//            }
-//        }
-//
-//        $errors[$path][] = self::MSG_URI_NOT_ALLOWED;
-//    }
 }

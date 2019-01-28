@@ -8,10 +8,11 @@ namespace DeliverymanTest\Integration;
 
 use Deliveryman\Channel\HttpGraphChannel;
 use Deliveryman\Entity\BatchRequest;
+use Deliveryman\Entity\BatchResponse;
 use Deliveryman\Normalizer\BatchRequestNormalizer;
 use Deliveryman\Service\BatchRequestValidator;
 use Deliveryman\Service\ConfigManager;
-use Deliveryman\Service\Sender;
+use Deliveryman\Service\BatchRequestHandler;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
@@ -19,6 +20,11 @@ use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\Handler\HandlersLocator;
+use Symfony\Component\Messenger\MessageBus;
+use Symfony\Component\Messenger\Middleware\HandleMessageMiddleware;
+use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer;
 use Symfony\Component\Serializer\Serializer;
@@ -69,10 +75,10 @@ class IntegrationTest extends TestCase
     /**
      * @param array $config
      * @param HttpRequest|null $masterRequest
-     * @return Sender
+     * @return BatchRequestHandler
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function initSender(array $config, ?HttpRequest $masterRequest = null): Sender
+    protected function initHandler(array $config, ?HttpRequest $masterRequest = null): BatchRequestHandler
     {
         $configManager = new ConfigManager();
         $configManager->addConfiguration($config);
@@ -84,7 +90,7 @@ class IntegrationTest extends TestCase
             $requestStack = null;
         }
 
-        return new Sender(
+        return new BatchRequestHandler(
             new HttpGraphChannel($configManager, $requestStack),
             $configManager,
             new BatchRequestValidator($configManager)
@@ -99,8 +105,6 @@ class IntegrationTest extends TestCase
      * @param array $responses
      * @param RequestInterface[]|array $expectedRequests
      * @param array $output
-     * @throws \Deliveryman\Exception\SendingException
-     * @throws \Deliveryman\Exception\SerializationException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function testBatchRequest(
@@ -124,14 +128,14 @@ class IntegrationTest extends TestCase
 
             return $mockHandler($request, $options);
         });
-        $sender = $this->initSender($config);
+        $sender = $this->initHandler($config);
         $serializer = $this->initSerializer();
 
         $this->assertTrue($serializer->supportsDenormalization($input, BatchRequest::class));
 
         /** @var BatchRequest $batchRequest */
         $batchRequest = $serializer->denormalize($input, BatchRequest::class, null, ['channel' => 'http_graph']);
-        $batchResponse = $sender->send($batchRequest);
+        $batchResponse = $sender($batchRequest);
 
         $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json', ['channel' => 'http_graph']));
         $actual = $serializer->normalize($batchResponse, null, ['channel' => 'http_graph']);
@@ -146,8 +150,6 @@ class IntegrationTest extends TestCase
      * @param array $responses
      * @param RequestInterface[]|array $expectedRequests
      * @param array $output
-     * @throws \Deliveryman\Exception\SendingException
-     * @throws \Deliveryman\Exception\SerializationException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function testClientRequest(
@@ -175,14 +177,14 @@ class IntegrationTest extends TestCase
             return $mockHandler($request, $options);
         });
 
-        $sender = $this->initSender($config, $masterRequest);
+        $sender = $this->initHandler($config, $masterRequest);
         $serializer = $this->initSerializer();
 
         $this->assertTrue($serializer->supportsDenormalization($input, BatchRequest::class));
 
         /** @var BatchRequest $batchRequest */
         $batchRequest = $serializer->denormalize($input, BatchRequest::class, null, ['channel' => 'http_graph']);
-        $batchResponse = $sender->send($batchRequest);
+        $batchResponse = $sender($batchRequest);
 
         $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json', ['channel' => 'http_graph']));
         $actual = $serializer->normalize($batchResponse, null, ['channel' => 'http_graph']);
@@ -243,6 +245,32 @@ class IntegrationTest extends TestCase
         }
 
         return $data;
+    }
+
+    /**
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function testBusCall()
+    {
+        $config = ['domains' => ['example.com']];
+        $handler = $this->initHandler($config);
+        $bus = new MessageBus([
+            new HandleMessageMiddleware(new HandlersLocator([
+                BatchRequest::class => ['dummy' => $handler],
+            ])),
+        ]);
+
+        $response = $bus->dispatch(new BatchRequest());
+
+        $this->assertInstanceOf(Envelope::class, $response);
+
+        // get the value that was returned by the last message handler
+        $handledStamp = $response->last(HandledStamp::class);
+        $last = $handledStamp->getResult();
+
+        $this->assertInstanceOf(BatchResponse::class, $last);
+        $this->assertEquals(['data' => ['This value should not be blank.']], $last->getErrors());
+        $this->assertEquals('aborted', $last->getStatus());
     }
 
 }
