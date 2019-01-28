@@ -8,6 +8,7 @@ namespace DeliverymanTest\Integration;
 
 use Deliveryman\Channel\HttpGraphChannel;
 use Deliveryman\Entity\BatchRequest;
+use Deliveryman\Entity\BatchResponse;
 use Deliveryman\Normalizer\BatchRequestNormalizer;
 use Deliveryman\Service\BatchRequestValidator;
 use Deliveryman\Service\ConfigManager;
@@ -19,6 +20,11 @@ use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\Handler\HandlersLocator;
+use Symfony\Component\Messenger\MessageBus;
+use Symfony\Component\Messenger\Middleware\HandleMessageMiddleware;
+use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer;
 use Symfony\Component\Serializer\Serializer;
@@ -99,8 +105,6 @@ class IntegrationTest extends TestCase
      * @param array $responses
      * @param RequestInterface[]|array $expectedRequests
      * @param array $output
-     * @throws \Deliveryman\Exception\SendingException
-     * @throws \Deliveryman\Exception\SerializationException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function testBatchRequest(
@@ -146,8 +150,6 @@ class IntegrationTest extends TestCase
      * @param array $responses
      * @param RequestInterface[]|array $expectedRequests
      * @param array $output
-     * @throws \Deliveryman\Exception\SendingException
-     * @throws \Deliveryman\Exception\SerializationException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function testClientRequest(
@@ -243,6 +245,32 @@ class IntegrationTest extends TestCase
         }
 
         return $data;
+    }
+
+    /**
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function testBusCall()
+    {
+        $config = ['domains' => ['example.com']];
+        $handler = $this->initHandler($config);
+        $bus = new MessageBus([
+            new HandleMessageMiddleware(new HandlersLocator([
+                BatchRequest::class => ['dummy' => $handler],
+            ])),
+        ]);
+
+        $response = $bus->dispatch(new BatchRequest());
+
+        $this->assertInstanceOf(Envelope::class, $response);
+
+        // get the value that was returned by the last message handler
+        $handledStamp = $response->last(HandledStamp::class);
+        $last = $handledStamp->getResult();
+
+        $this->assertInstanceOf(BatchResponse::class, $last);
+        $this->assertEquals(['data' => ['This value should not be blank.']], $last->getErrors());
+        $this->assertEquals('aborted', $last->getStatus());
     }
 
 }
