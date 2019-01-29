@@ -27,15 +27,13 @@ class ConfigurationTest extends TestCase
         $definition = new Configuration();
         $processor = new Processor();
         $config = $processor->processConfiguration($definition, [
-            'deliveryman' => [
-                'domains' => ['example.com'],
-            ],
+            ['channels'=> ['http_graph' => ['domains' => ['example.com'],]]],
         ]);
 
         $this->assertEquals([
-            'domains' => ['example.com',], // TODO: rename to format
             'channels' => [
                 'http_graph' => [
+                    'domains' => ['example.com',],
                     'request_options' => [
                         'allow_redirects' => false,
                         'connect_timeout' => 10,
@@ -56,18 +54,6 @@ class ConfigurationTest extends TestCase
     }
 
     /**
-     * Test that exception is thrown because of unset required values
-     */
-    public function testDefaultsRequired()
-    {
-        $this->expectException(InvalidConfigurationException::class);
-        $definition = new Configuration();
-
-        $processor = new Processor();
-        $processor->processConfiguration($definition, []);
-    }
-
-    /**
      * Test that configuration is properly working when required settings are filled in
      */
     public function testRequiredSet()
@@ -75,15 +61,13 @@ class ConfigurationTest extends TestCase
         $definition = new Configuration();
         $processor = new Processor();
         $config = $processor->processConfiguration($definition, [
-            'deliveryman' => [
-                'domains' => ['example.com'],
-            ],
+            ['channels'=> ['http_graph' => ['domains' => ['example.com']]]],
         ]);
 
         $this->assertEquals([
-            'domains' => ['example.com',],
             'channels' => [
                 'http_graph' => [
+                    'domains' => ['example.com',],
                     'request_options' => [
                         'allow_redirects' => false,
                         'connect_timeout' => 10,
@@ -113,7 +97,7 @@ class ConfigurationTest extends TestCase
         $definition = new Configuration();
         $processor = new Processor();
         $processor->processConfiguration($definition, [
-            'deliveryman' => ['domains' => ['i n v a l i d example.com']],
+            'deliveryman' => ['channels'=> ['http_graph' => [['domains' => ['i n v a l i d example.com']]]]],
         ]);
     }
 

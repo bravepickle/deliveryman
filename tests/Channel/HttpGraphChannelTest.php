@@ -53,8 +53,13 @@ class HttpGraphChannelTest extends TestCase
      * @throws \Deliveryman\Exception\LogicException
      * @throws \Deliveryman\Exception\InvalidArgumentException
      */
-    public function testSend(array $appConfig, Envelope $input, array $responses, array $expectedRequests, array $expected)
-    {
+    public function testSend(
+        array $appConfig,
+        Envelope $input,
+        array $responses,
+        array $expectedRequests,
+        array $expected
+    ) {
         $mockHandler = new MockHandler($responses);
         $handler = HandlerStack::create(function (
             RequestInterface $request,
@@ -137,7 +142,6 @@ class HttpGraphChannelTest extends TestCase
 
         $batch = new BatchRequest();
         $configManager = new ConfigManager();
-        $configManager->addConfiguration(['domains' => ['localhost']]);
 
         $channel = new HttpGraphChannel($configManager);
         $channel->send(new Envelope($batch));
@@ -153,16 +157,15 @@ class HttpGraphChannelTest extends TestCase
     {
         $input = (new BatchRequest())
             ->setData([
-                (new HttpRequest())->setId('home')->setUri('localhost/')
+                (new HttpRequest())->setId('home')->setUri('localhost/'),
             ]);
         $appConfig = [
-            'domains' => ['localhost'],
             'on_fail' => 'proceed',
         ];
         $expected = [
             'ok' => [],
             'failed' => [
-                'home' => (new HttpResponse())->setId('home')->setStatusCode(400)->setHeaders([])
+                'home' => (new HttpResponse())->setId('home')->setStatusCode(400)->setHeaders([]),
             ],
             'errors' => ['home' => 'Request failed to complete.'],
         ];
@@ -206,9 +209,7 @@ class HttpGraphChannelTest extends TestCase
                     ->setConfig((new RequestConfig())->setOnFail('proceed')),
                 (new HttpRequest())->setId('profile')->setUri('localhost/profile')->setReq(['feedback']),
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $response = new Response(400);
 
@@ -225,8 +226,18 @@ class HttpGraphChannelTest extends TestCase
         $channel->send(new Envelope($input));
 
         $this->assertEquals([], $channel->getOkResponses(), 'Success responses differ');
-        $this->assertEquals(['home', 'logout', 'feedback', 'login', 'profile',], array_keys($channel->getFailedResponses()), 'Failed responses differ');
-        $this->assertEquals(['home', 'logout', 'feedback', 'login', 'profile',], array_keys($channel->getErrors()), 'Error responses differ');
+        $this->assertEquals(['home',
+            'logout',
+            'feedback',
+            'login',
+            'profile',
+        ], array_keys($channel->getFailedResponses()), 'Failed responses differ');
+        $this->assertEquals(['home',
+            'logout',
+            'feedback',
+            'login',
+            'profile',
+        ], array_keys($channel->getErrors()), 'Error responses differ');
     }
 
 
@@ -244,9 +255,7 @@ class HttpGraphChannelTest extends TestCase
                 (new HttpRequest())->setId('home')->setUri('localhost/')
                     ->setConfig((new RequestConfig())->setOnFail('unexpected_case')),
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $response = new Response(400);
 
@@ -274,11 +283,9 @@ class HttpGraphChannelTest extends TestCase
         $this->expectExceptionMessage('Queue terminated due to request errors.');
         $input = (new BatchRequest())
             ->setData([
-                (new HttpRequest())->setId('home')->setUri('localhost/')
+                (new HttpRequest())->setId('home')->setUri('localhost/'),
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $response = new Response(400);
 
@@ -306,11 +313,9 @@ class HttpGraphChannelTest extends TestCase
         $this->expectExceptionMessage('Queue terminated due to request errors.');
         $input = (new BatchRequest())
             ->setData([
-                (new HttpRequest())->setId('home')->setUri('localhost/')
+                (new HttpRequest())->setId('home')->setUri('localhost/'),
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $response = new Response(400);
 
@@ -318,6 +323,7 @@ class HttpGraphChannelTest extends TestCase
             return \GuzzleHttp\Promise\promise_for($response);
         });
 
+        $appConfig['channels']['http_graph']['domains'] = ['localhost'];
         $appConfig['channels']['http_graph']['request_options']['handler'] = $handler;
 
         $configManager = new ConfigManager();
@@ -345,7 +351,7 @@ class HttpGraphChannelTest extends TestCase
                 (new HttpRequest())->setId('login')->setUri('localhost/login')->setReq(['home']),
             ]);
         $appConfig = [
-            'domains' => ['localhost'],
+            'channels' => ['http_graph' => ['domains' => ['localhost']]],
         ];
 
         $handler = HandlerStack::create($handler);
@@ -376,9 +382,7 @@ class HttpGraphChannelTest extends TestCase
                 (new HttpRequest())->setId('home')->setUri('localhost/')
                     ->setConfig((new RequestConfig())->setFormat('binary')),
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $handler = HandlerStack::create($handler);
 
@@ -410,9 +414,7 @@ class HttpGraphChannelTest extends TestCase
                     ->setConfig((new RequestConfig())->setOnFail('crash')),
                 (new HttpRequest())->setId('foo')->setUri('localhost/foo')->setReq(['home']),
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $handler = HandlerStack::create($handler);
 
@@ -450,9 +452,7 @@ class HttpGraphChannelTest extends TestCase
             ->setData([
                 (new HttpRequest())->setId('home')->setUri('localhost/'),
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $handler = HandlerStack::create($handler);
 
@@ -485,11 +485,13 @@ class HttpGraphChannelTest extends TestCase
         array $responses,
         array $expectedRequests,
         array $expected
-    )
-    {
+    ) {
         $mockHandler = new MockHandler($responses);
 
-        $handler = HandlerStack::create(function (RequestInterface $request, $options) use ($mockHandler, $expectedRequests) {
+        $handler = HandlerStack::create(function (RequestInterface $request, $options) use (
+            $mockHandler,
+            $expectedRequests
+        ) {
             $expected = array_shift($expectedRequests);
 
             $this->assertEquals($expected->getMethod(), $request->getMethod(), 'Sent request method differs from expected.');
@@ -608,8 +610,8 @@ class HttpGraphChannelTest extends TestCase
 
         $data[$key]['input'] = new Envelope(
             (new BatchRequest())
-            ->setConfig($datum['input']['config'] ?? null)
-            ->setData($body)
+                ->setConfig($datum['input']['config'] ?? null)
+                ->setData($body)
         );
     }
 

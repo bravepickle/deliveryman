@@ -252,7 +252,7 @@ class IntegrationTest extends TestCase
      */
     public function testBusCall()
     {
-        $config = ['domains' => ['example.com']];
+        $config = [];
         $handler = $this->initHandler($config);
         $bus = new MessageBus([
             new HandleMessageMiddleware(new HandlersLocator([
@@ -265,7 +265,9 @@ class IntegrationTest extends TestCase
         $this->assertInstanceOf(Envelope::class, $response);
 
         // get the value that was returned by the last message handler
+        /** @var HandledStamp $handledStamp */
         $handledStamp = $response->last(HandledStamp::class);
+        /** @var BatchResponse $last */
         $last = $handledStamp->getResult();
 
         $this->assertInstanceOf(BatchResponse::class, $last);
