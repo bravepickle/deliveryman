@@ -92,6 +92,24 @@ The following steps should be taken to make agent working properly:
     1. Which responses and their data should be returned to principal after processing?
 1. Use OpenAPI document for understanding API format used for application
 
+## Questions and answers
+*Q:* Why not use JS frontend library instead?
+*A:* Due to following reasons:
+    1. gives lower network latency than server implementation when servers with Deliveryman are positioned closer to target servers
+    1. no need to implement rather complex business logic (in some cases) for handling multiple requests simultaneously, 
+    especially when some specific sequence is required
+    1. additional processing logic may be applied before and after processing batches. For example, logging, 
+    firewalls, validation, switching contexts and transport protocols, transforming data format, caching, 
+    monitoring usages, optimizing requests from multiple clients.
+    1. if you have more than one client (e.g. other client server, mobile app and browser web app), it can support all of them
+
+*Q:* How is it better than GraphQL?
+*A:* Concepts and use cases are not the same. GraphQL is an alternative to REST-like APIs, but Deliveryman aims at 
+batch processing requests in various formats with ability to modify input and output avoiding tight coupling with 
+existing business logic at the same time. It is more like a aggregation wrapper around already built APIs 
+that simplifies things. Actually, you can wrap multiple GraphQL requests to various web servers in single go using 
+Deliveryman library.
+
 ## Installation
 
 ## Configuration
@@ -126,3 +144,4 @@ The following steps should be taken to make agent working properly:
 - [ ] Solve problem of how to pass headers in responses back if needed to be added to batch response, e.g. cookies 
 - [ ] Optimize handling queues: single queue - run normally; multiple queues but single request per each - run in parallel;
          multiple queues with various numbers of requests - run in forked scripts or implement queues consumers-receivers, worker-jobs etc.
+- [ ] Upgrade to symfony 4.3 or just allow it in deps 4.2.* | 4.3.*

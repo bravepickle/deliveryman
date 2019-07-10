@@ -11,7 +11,7 @@ use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Normalizer\BatchRequestNormalizer;
 use Deliveryman\Service\BatchRequestValidator;
 use Deliveryman\Service\ConfigManager;
-use Deliveryman\Service\Sender;
+use Deliveryman\Service\BatchRequestHandler;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
@@ -69,10 +69,10 @@ class IntegrationTest extends TestCase
     /**
      * @param array $config
      * @param HttpRequest|null $masterRequest
-     * @return Sender
+     * @return BatchRequestHandler
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function initSender(array $config, ?HttpRequest $masterRequest = null): Sender
+    protected function initSender(array $config, ?HttpRequest $masterRequest = null): BatchRequestHandler
     {
         $configManager = new ConfigManager();
         $configManager->addConfiguration($config);
@@ -84,7 +84,7 @@ class IntegrationTest extends TestCase
             $requestStack = null;
         }
 
-        return new Sender(
+        return new BatchRequestHandler(
             new HttpGraphChannel($configManager, $requestStack),
             $configManager,
             new BatchRequestValidator($configManager)
@@ -99,8 +99,8 @@ class IntegrationTest extends TestCase
      * @param array $responses
      * @param RequestInterface[]|array $expectedRequests
      * @param array $output
-     * @throws \Deliveryman\Exception\SendingException
-     * @throws \Deliveryman\Exception\SerializationException
+     * @throws \Deliveryman\Exception\InvalidArgumentException
+     * @throws \Deliveryman\Exception\LogicException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function testBatchRequest(
@@ -131,7 +131,7 @@ class IntegrationTest extends TestCase
 
         /** @var BatchRequest $batchRequest */
         $batchRequest = $serializer->denormalize($input, BatchRequest::class, null, ['channel' => 'http_graph']);
-        $batchResponse = $sender->send($batchRequest);
+        $batchResponse = $sender($batchRequest);
 
         $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json', ['channel' => 'http_graph']));
         $actual = $serializer->normalize($batchResponse, null, ['channel' => 'http_graph']);
@@ -146,8 +146,8 @@ class IntegrationTest extends TestCase
      * @param array $responses
      * @param RequestInterface[]|array $expectedRequests
      * @param array $output
-     * @throws \Deliveryman\Exception\SendingException
-     * @throws \Deliveryman\Exception\SerializationException
+     * @throws \Deliveryman\Exception\InvalidArgumentException
+     * @throws \Deliveryman\Exception\LogicException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function testClientRequest(
@@ -182,7 +182,7 @@ class IntegrationTest extends TestCase
 
         /** @var BatchRequest $batchRequest */
         $batchRequest = $serializer->denormalize($input, BatchRequest::class, null, ['channel' => 'http_graph']);
-        $batchResponse = $sender->send($batchRequest);
+        $batchResponse = $sender($batchRequest);
 
         $this->assertTrue($serializer->supportsNormalization($batchResponse, 'json', ['channel' => 'http_graph']));
         $actual = $serializer->normalize($batchResponse, null, ['channel' => 'http_graph']);

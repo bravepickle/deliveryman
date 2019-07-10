@@ -4,19 +4,21 @@ namespace Deliveryman\Service;
 
 
 use Deliveryman\Channel\ChannelInterface;
+use Deliveryman\Channel\HttpGraphChannel;
 use Deliveryman\Entity\BatchRequest;
 use Deliveryman\Entity\BatchResponse;
 use Deliveryman\Entity\RequestConfig;
 use Deliveryman\EventListener\EventSender;
 use Deliveryman\Exception\ChannelException;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Messenger\Envelope;
 
 /**
- * Class Sender
+ * Class BatchRequestHandler
  * Is a facade for sending parsed batch request
  * @package Deliveryman\Service
  */
-class Sender implements SenderInterface
+class BatchRequestHandler implements BatchRequestHandlerInterface
 {
     /**
      * @var ChannelInterface
@@ -39,7 +41,7 @@ class Sender implements SenderInterface
     protected $validator;
 
     /**
-     * Sender constructor.
+     * BatchRequestHandler constructor.
      * @param ChannelInterface $channel
      * @param ConfigManager $configManager
      * @param BatchRequestValidator $batchRequestValidator
@@ -60,8 +62,11 @@ class Sender implements SenderInterface
 
     /**
      * @inheritdoc
+     * @throws \Deliveryman\Exception\InvalidArgumentException
+     * @throws \Deliveryman\Exception\LogicException
+     * @throws \Psr\Cache\InvalidArgumentException
      */
-    public function send(BatchRequest $batchRequest): BatchResponse
+    public function __invoke(BatchRequest $batchRequest): BatchResponse
     {
         $this->channel->clear();
         $channel = $this->channel;
@@ -227,13 +232,16 @@ class Sender implements SenderInterface
 
     /**
      * @param BatchRequest $batchRequest
-     * @param ChannelInterface $channel
+     * @param ChannelInterface|HttpGraphChannel $channel
      * @param bool $aborted
+     * @throws \Deliveryman\Exception\InvalidArgumentException
+     * @throws \Deliveryman\Exception\LogicException
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function dispatchSend(BatchRequest $batchRequest, ChannelInterface $channel, bool &$aborted = false)
     {
         try {
-            $channel->send($batchRequest);
+            $channel->send(new Envelope($batchRequest));
         } catch (ChannelException $e) {
             $aborted = true;
         }

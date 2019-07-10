@@ -14,6 +14,7 @@ use Deliveryman\Entity\HttpResponse;
 use Deliveryman\Entity\ResponseItemInterface;
 use Deliveryman\EventListener\BuildResponseEvent;
 use Deliveryman\Exception\HttpGraphChannelException;
+use Deliveryman\Exception\InvalidArgumentException;
 use Deliveryman\Exception\LogicException;
 use Deliveryman\Exception\SendingException;
 use Deliveryman\Service\ConfigManager;
@@ -24,8 +25,10 @@ use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\RequestOptions;
 use GuzzleHttp\Promise;
 use Psr\Http\Message\ResponseInterface;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Serializer\Encoder\JsonDecode;
 use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 
@@ -74,7 +77,7 @@ class HttpGraphChannel extends AbstractChannel
     protected $batchRequest;
 
     /**
-     * @var EventDispatcherInterface|null
+     * @var EventDispatcher|null
      */
     protected $dispatcher;
 
@@ -94,7 +97,7 @@ class HttpGraphChannel extends AbstractChannel
     protected $mergeStrategy;
 
     /**
-     * Sender constructor.
+     * BatchRequestHandler constructor.
      * @param ConfigManager $configManager
      * @param RequestStack|null $requestStack
      * @param EventDispatcherInterface|null $dispatcher
@@ -156,10 +159,16 @@ class HttpGraphChannel extends AbstractChannel
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Deliveryman\Exception\LogicException
      * @throws \Deliveryman\Exception\InvalidArgumentException
+     * @throws HttpGraphChannelException
      */
-    public function send(BatchRequest $batchRequest)
+    public function send(Envelope $envelope): Envelope
     {
-        $this->batchRequest = $batchRequest;
+        if (!$envelope->getMessage() instanceof BatchRequest) {
+            throw new InvalidArgumentException('Cannot handle message of class: ' .
+                get_class($envelope->getMessage()));
+        }
+
+        $this->batchRequest = $envelope->getMessage();
 
         // TODO: validate that input data is array
         if (!$this->batchRequest->getData()) {
@@ -173,7 +182,7 @@ class HttpGraphChannel extends AbstractChannel
             $request = reset($requests);
             $this->sendRequest($request);
 
-            return;
+            return $envelope;
         }
 
         $this->nodesCollection = new GraphNodeCollection(
@@ -183,10 +192,12 @@ class HttpGraphChannel extends AbstractChannel
         if ($this->hasSingleArrow()) {
             $this->sendSingleArrow();
 
-            return;
+            return $envelope;
         }
 
         $this->sendMultiArrows();
+
+        return $envelope;
     }
 
     /**
@@ -353,7 +364,9 @@ class HttpGraphChannel extends AbstractChannel
     {
         return function (ResponseInterface $response) use ($client, $node, $request) {
             $this->setNodeState($node, self::NODE_STATE_SEND_FINISHED);
-            if (!in_array($response->getStatusCode(), (array)$request->getConfig()->getChannel()->getExpectedStatusCodes())) {
+            /** @var ChannelConfig $channel */
+            $channel = $request->getConfig()->getChannel();
+            if (!in_array($response->getStatusCode(), (array)$channel->getExpectedStatusCodes())) {
                 $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
@@ -467,7 +480,9 @@ class HttpGraphChannel extends AbstractChannel
     protected function getSendFulfilledCallback(HttpRequest $request): \Closure
     {
         return function (ResponseInterface $response) use ($request) {
-            if (!in_array($response->getStatusCode(), (array)$request->getConfig()->getChannel()->getExpectedStatusCodes())) {
+            /** @var ChannelConfig $channel */
+            $channel = $request->getConfig()->getChannel();
+            if (!in_array($response->getStatusCode(), (array)$channel->getExpectedStatusCodes())) {
                 $this->addError($request->getId(), self::MSG_REQUEST_FAILED);
                 $this->addFailedResponse($request->getId(), $this->buildResponseData($request, $response));
 
