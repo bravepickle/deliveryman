@@ -137,7 +137,6 @@ class HttpGraphChannelTest extends TestCase
 
         $batch = new BatchRequest();
         $configManager = new ConfigManager();
-        $configManager->addConfiguration(['domains' => ['localhost']]);
 
         $channel = new HttpGraphChannel($configManager);
         $channel->send(new Envelope($batch));
@@ -156,7 +155,6 @@ class HttpGraphChannelTest extends TestCase
                 (new HttpRequest())->setId('home')->setUri('localhost/')
             ]);
         $appConfig = [
-            'domains' => ['localhost'],
             'on_fail' => 'proceed',
         ];
         $expected = [
@@ -206,9 +204,7 @@ class HttpGraphChannelTest extends TestCase
                     ->setConfig((new RequestConfig())->setOnFail('proceed')),
                 (new HttpRequest())->setId('profile')->setUri('localhost/profile')->setReq(['feedback']),
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $response = new Response(400);
 
@@ -244,9 +240,7 @@ class HttpGraphChannelTest extends TestCase
                 (new HttpRequest())->setId('home')->setUri('localhost/')
                     ->setConfig((new RequestConfig())->setOnFail('unexpected_case')),
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $response = new Response(400);
 
@@ -276,9 +270,7 @@ class HttpGraphChannelTest extends TestCase
             ->setData([
                 (new HttpRequest())->setId('home')->setUri('localhost/')
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $response = new Response(400);
 
@@ -308,9 +300,7 @@ class HttpGraphChannelTest extends TestCase
             ->setData([
                 (new HttpRequest())->setId('home')->setUri('localhost/')
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $response = new Response(400);
 
@@ -344,9 +334,7 @@ class HttpGraphChannelTest extends TestCase
                 (new HttpRequest())->setId('home')->setUri('localhost/'),
                 (new HttpRequest())->setId('login')->setUri('localhost/login')->setReq(['home']),
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $handler = HandlerStack::create($handler);
 
@@ -376,9 +364,7 @@ class HttpGraphChannelTest extends TestCase
                 (new HttpRequest())->setId('home')->setUri('localhost/')
                     ->setConfig((new RequestConfig())->setFormat('binary')),
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $handler = HandlerStack::create($handler);
 
@@ -410,9 +396,7 @@ class HttpGraphChannelTest extends TestCase
                     ->setConfig((new RequestConfig())->setOnFail('crash')),
                 (new HttpRequest())->setId('foo')->setUri('localhost/foo')->setReq(['home']),
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $handler = HandlerStack::create($handler);
 
@@ -450,9 +434,7 @@ class HttpGraphChannelTest extends TestCase
             ->setData([
                 (new HttpRequest())->setId('home')->setUri('localhost/'),
             ]);
-        $appConfig = [
-            'domains' => ['localhost'],
-        ];
+        $appConfig = [];
 
         $handler = HandlerStack::create($handler);
 
