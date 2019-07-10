@@ -7,7 +7,6 @@
 namespace Deliveryman\DependencyInjection;
 
 
-use Deliveryman\Channel\HttpGraphChannel;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\Config\Definition\Builder\NodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
@@ -50,14 +49,18 @@ class Configuration implements ConfigurationInterface
      */
     protected function addChannelsBranch(NodeBuilder $rootNode): void
     {
-        $defaultValues = [ // TODO: update defaults after all options will be reconfigured, add missing
+        $defaultDomains = ['localhost', '127.0.0.1'];
+        $defaultRequestOptions = [
+            'allow_redirects' => false,
+            'connect_timeout' => 10,
+            'timeout' => 30,
+            'debug' => false,
+        ];
+
+        $defaultValues = [
             'http_graph' => [
-                'request_options' => [
-                    'allow_redirects' => false,
-                    'connect_timeout' => 10,
-                    'timeout' => 30,
-                    'debug' => false,
-                ],
+                'domains' => $defaultDomains,
+                'request_options' => $defaultRequestOptions,
                 'sender_headers' => [],
                 'receiver_headers' => [],
                 'expected_status_codes' => [200, 201, 202, 204],
@@ -75,10 +78,35 @@ class Configuration implements ConfigurationInterface
                     ->info('HTTP requests that have dependencies similar to directed tree graph format')
                     ->addDefaultsIfNotSet()
                     ->children()
+                        ->arrayNode('domains')
+                            ->beforeNormalization()->castToArray()->end()
+                            ->requiresAtLeastOneElement()
+                            ->info('Domains whitelist which are allowed for sending requests. Allowed formats: {domain}, {schema}://{domain}.')
+                            ->defaultValue($defaultDomains)
+                            ->treatNullLike($defaultDomains)
+                            ->example(['example.com', 'http://an.example.com', '192.168.1.10'])
+                            ->validate()
+                            ->ifTrue(function ($data) {
+                                if (!is_array($data)) {
+                                    return true;
+                                }
+
+                                foreach ($data as $datum) {
+                                    if (!$datum || !preg_match('~^(?:https?://)?[^\s/]+$~i', $datum)) {
+                                        return true;
+                                    }
+                                }
+
+                                return false;
+                            })
+                            ->thenInvalid('Invalid format for whitelisted domains: %s')
+                            ->end()
+                            ->scalarPrototype()->end()
+                        ->end()
                         ->arrayNode('request_options')
-                            ->isRequired()
                             ->info('Request options for Guzzle client library')
-                            ->defaultValue($defaultValues['http_graph']['request_options'])
+                            ->defaultValue($defaultRequestOptions)
+                            ->treatNullLike($defaultRequestOptions)
                             ->variablePrototype()->end()
                         ->end()
                         ->arrayNode('sender_headers')
@@ -109,37 +137,6 @@ class Configuration implements ConfigurationInterface
                     ->end()
                 ->end()
             ->end()
-        ->end();
-    }
-
-    /**
-     * @param NodeBuilder $rootNode
-     */
-    protected function addDomainsBranch(NodeBuilder $rootNode): void
-    {
-        $rootNode->arrayNode('domains')
-            ->beforeNormalization()->castToArray()->end()
-            ->requiresAtLeastOneElement()
-            ->isRequired()
-            ->info('Domains whitelist which are allowed for sending requests. Allowed formats: {domain}, {schema}://{domain}.')
-            ->example(['example.com', 'http://an.example.com'])
-            ->validate()
-            ->ifTrue(function ($data) {
-                if (!is_array($data)) {
-                    return true;
-                }
-
-                foreach ($data as $datum) {
-                    if (!$datum || !preg_match('~^(?:https?://)?[^\s/]+$~i', $datum)) {
-                        return true;
-                    }
-                }
-
-                return false;
-            })
-            ->thenInvalid('Invalid format for whitelisted domains: %s')
-            ->end()
-            ->scalarPrototype()->end()
         ->end();
     }
 
@@ -231,7 +228,6 @@ class Configuration implements ConfigurationInterface
 
         $nodeBuilder = $rootNode->addDefaultsIfNotSet()->children();
 
-        $this->addDomainsBranch($nodeBuilder);
         $this->addChannelsBranch($nodeBuilder);
         $this->addBatchFormatLeaf($nodeBuilder);
         $this->addResourceFormatLeaf($nodeBuilder);

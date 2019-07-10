@@ -1,10 +1,10 @@
 batchRequestProvider:
     -
         config:
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { debug: false, allow_redirects: false, headers: { User-Agent: [testing/1.0] } }
 
         input:
@@ -53,11 +53,11 @@ batchRequestProvider:
 
 configProvider:
     -   config:
-            domains:
-                - 'http://example.com'
             silent: true
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
         input:
             data:
@@ -80,11 +80,11 @@ configProvider:
             errors: null
             failed: null
     -   config:
-            domains:
-                - 'http://example.com'
             silent: true
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
                     expected_status_codes: [200]
         input:
@@ -129,11 +129,11 @@ configProvider:
                     statusCode: 500
                     data: { err: 'server error' }
     -   config:
-            domains:
-                - 'http://example.com'
             silent: false
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
         input:
             data:
@@ -170,11 +170,11 @@ configProvider:
                     statusCode: 200
                     data: { data: ok }
     -   config:
-            domains:
-                - 'http://example.com'
             on_fail: abort
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
         input:
             data:
@@ -204,10 +204,10 @@ configProvider:
 
 clientRequestProvider:
     -   config:
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
                     sender_headers:
                         - x-foo

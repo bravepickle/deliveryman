@@ -1,11 +1,11 @@
 sendProvider:
     -   # check single request in batch
         config:
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
                     request_options: { headers: { User-Agent: [testing/1.0] } }
+                    domains:
+                        - 'http://example.com'
 
         input:
             data:
@@ -38,10 +38,10 @@ sendProvider:
     -   # test failing response with single request
         config:
             on_fail: proceed
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
                     expected_status_codes: [200]
 
@@ -76,10 +76,10 @@ sendProvider:
 
     -   # test 2 requests with additional headers for responses and requests and references
         config:
-            domains:
-                - 'http://dev.example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://dev.example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
                     expected_status_codes: [200, 201]
                     receiver_headers: [Set-Cookie, Location, Content-Type]
@@ -139,10 +139,10 @@ sendProvider:
 
     -   # test multiple arrows graph
         config:
-            domains:
-                - 'http://dev.example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://dev.example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
 
         input:
@@ -206,10 +206,10 @@ sendProvider:
 
     -   # check single request with plain text and query data
         config:
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
 
         input:
@@ -250,10 +250,10 @@ sendProvider:
 
     -   # config: request.on_fail=proceed
         config:
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
             on_fail: proceed
         input:
@@ -302,10 +302,10 @@ sendProvider:
 
     -   # config: general.silent=true, general.on_fail=abort-queue
         config:
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
             on_fail: abort-queue
         input:
@@ -353,10 +353,10 @@ sendProvider:
 
     -   # app.config_merge=ignore
         config:
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
             config_merge: ignore
         input:
@@ -389,10 +389,10 @@ sendProvider:
 
     -   # app.config_merge=ignore, request.config_merge=first, expected_status_codes=400, on_fail=proceed
         config:
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
             config_merge: ignore
             on_fail: proceed
@@ -431,10 +431,10 @@ sendProvider:
 
     -   # app.config_merge=ignore, general.config_merge=first, expected_status_codes=400, on_fail=proceed
         config:
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
             config_merge: ignore
             on_fail: proceed
@@ -473,10 +473,10 @@ sendProvider:
 
     -   # app.resource_format=text, app.on_fail=proceed
         config:
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
             resource_format: text
             on_fail: proceed
@@ -510,10 +510,10 @@ sendProvider:
 clientRequestProvider:
     -   # test forwarding receiver headers
         config:
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
                     sender_headers: [X-Client]
                     receiver_headers: [X-Data]
@@ -553,10 +553,10 @@ clientRequestProvider:
 
     -   # test not set sender_headers
         config:
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
                     sender_headers: []
                     receiver_headers: [X-Data]
@@ -597,10 +597,10 @@ clientRequestProvider:
 
     -   # client request not defined for request stack
         config:
-            domains:
-                - 'http://example.com'
             channels:
                 http_graph:
+                    domains:
+                        - 'http://example.com'
                     request_options: { headers: { User-Agent: [testing/1.0] } }
                     sender_headers: []
                     receiver_headers: [X-Data]

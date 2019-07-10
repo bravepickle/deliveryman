@@ -31,7 +31,8 @@ class BatchRequestHandlerTest extends TestCase
      */
     public function testSend(BatchRequest $input, array $responses, BatchResponse $expected)
     {
-        $config = ['domains' => ['example.com', 'http://foo.com']];
+        $config = [];
+        $config['channels']['http_graph']['domains'] = ['example.com', 'http://foo.com'];
         $config['channels']['http_graph']['request_options']['handler'] = HandlerStack::create(new MockHandler($responses));
 
         $configManager = new ConfigManager();
