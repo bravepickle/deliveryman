@@ -144,3 +144,4 @@ Deliveryman library.
 - [ ] Solve problem of how to pass headers in responses back if needed to be added to batch response, e.g. cookies 
 - [ ] Optimize handling queues: single queue - run normally; multiple queues but single request per each - run in parallel;
          multiple queues with various numbers of requests - run in forked scripts or implement queues consumers-receivers, worker-jobs etc.
+- [ ] Upgrade to symfony 4.3 or just allow it in deps 4.2.* | 4.3.*

@@ -25,7 +25,8 @@ class BatchRequestHandlerTest extends TestCase
      * @param BatchRequest $input
      * @param array $responses
      * @param BatchResponse $expected
-     * @throws \Deliveryman\Exception\SendingException
+     * @throws \Deliveryman\Exception\InvalidArgumentException
+     * @throws \Deliveryman\Exception\LogicException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function testSend(BatchRequest $input, array $responses, BatchResponse $expected)
@@ -39,7 +40,7 @@ class BatchRequestHandlerTest extends TestCase
         $provider = new HttpGraphChannel($configManager);
 
         $sender = new BatchRequestHandler($provider, $configManager, new BatchRequestValidator($configManager));
-        $actual = $sender->send($input);
+        $actual = $sender($input);
 
         $this->assertEquals($expected, $actual);
     }
